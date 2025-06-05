@@ -1,0 +1,83 @@
+/**
+ * Admin styles for SA Helper Chatbot
+ */
+.sa-helper-chatbot-knowledge-base {
+    margin-top: 30px;
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* API Settings */
+.form-table th {
+    padding-top: 15px;
+}
+
+.api-section-info {
+    background: #f9f9f9;
+    border-left: 4px solid #2271b1;
+    padding: 10px 15px;
+    margin: 10px 0 20px;
+}
+
+.api-status-indicator {
+    display: inline-block;
+    vertical-align: middle;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.api-status-enabled {
+    background-color: #46b450;
+}
+
+.api-status-disabled {
+    background-color: #dc3232;
+}
+
+.sa-helper-knowledge-tabs .nav-tab-wrapper {
+    margin-bottom: 0;
+}
+
+.sa-helper-knowledge-tabs .tab-content {
+    background: #fff;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-top: none;
+}
+
+.sa-helper-knowledge-tabs .tab-content h3 {
+    margin-top: 0;
+}
+
+.sa-helper-knowledge-tabs .wp-editor-container {
+    border: 1px solid #ddd;
+}
+
+/* API Test Page Styles */
+.api-test-results {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 5px;
+    border: 1px solid #ddd;
+}
+
+.api-response {
+    margin-top: 15px;
+}
+
+.api-response-content {
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    min-height: 100px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-family: monospace;
+    white-space: pre-wrap;
+}
