@@ -207,7 +207,7 @@ class SA_Helper_Chatbot_AI {
         $prompt = [
             'contents' => [
                 [
-                    'role' => 'user',
+                    'role' => 'assistant',
                     'parts' => [
                         ['text' => "Here is information about the company:\n\n$context\n\n" .
                                    "User question: $message\n\n" .
@@ -217,7 +217,7 @@ class SA_Helper_Chatbot_AI {
                 ]
             ],
             'generationConfig' => [
-                'temperature' => 0.4,
+                'temperature' => 0.6,
                 'maxOutputTokens' => 800,
             ],
         ];
