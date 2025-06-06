@@ -296,17 +296,6 @@ class SA_Helper_Chatbot_AI
      * @param array $response The API response
      * @return string The formatted response
      */
-    private function process_gemini_response($response) {
-        if (empty($response) || !isset($response['candidates'][0]['content']['parts'][0]['text'])) {
-            return "I'm having trouble understanding right now. Please try asking a different question.";
-        }
-        
-        $text = $response['candidates'][0]['content']['parts'][0]['text'];
-        
-        // Format and limit length
-        return $this->format_response($text);
-    }
-
     /**
      * Get response using keyword matching (fallback method)
      *
