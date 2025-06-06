@@ -63,8 +63,10 @@
                         const botReply = response.data.response;
                         const messageElement = addMessage('bot', botReply);
                         
-                        // Add feedback options
-                        addFeedbackOptions(messageElement, message, botReply);
+                        // Add feedback options - don't add feedback for error responses
+                        if (!response.data.error) {
+                            addFeedbackOptions(messageElement, message, botReply);
+                        }
                     } else {
                         addMessage('bot', 'Sorry, I encountered an error. Please try again.');
                     }

@@ -52,16 +52,25 @@ class SA_Helper_Chatbot_AI
      * @param string $message The user's message
      * @return string The chatbot's response
      */
-    public function get_response($message)
-    {
-        // Check if Gemini API is enabled and configured
+    public function get_response($message) {
+        // First try to use Gemini API if it's configured
         if ($this->is_gemini_api_configured()) {
-            return $this->get_gemini_response($message);
+            $gemini_response = $this->get_gemini_response($message);
+            
+            // If the response doesn't contain an error indicator, return it
+            if (strpos($gemini_response, "I'm having trouble") === false && 
+                strpos($gemini_response, "Let me fall back") === false) {
+                return $gemini_response;
+            }
+            
+            // If we got an error response, log it
+            error_log('SA Helper Bot: Gemini API response contained an error. Falling back to keyword matching.');
         }
-
-        // Fall back to keyword matching if API is not configured
+        
+        // Fall back to keyword matching if API is not configured or returned an error
         return $this->get_keyword_response($message);
     }
+    
     /**
      * Check if Gemini API is properly configured
      *
@@ -82,27 +91,33 @@ class SA_Helper_Chatbot_AI
      * @param string $message The user's message
      * @return string The AI-generated response
      */
-    private function get_gemini_response($message)
-    {
-        // Prepare the knowledge base context
-        $context = $this->prepare_context_for_gemini();
-
-        // Build the prompt
-        $prompt = $this->build_gemini_prompt($message, $context);
-
-        // Make API request
-        $response = $this->call_gemini_api($prompt);
-
-        // Handle API response
-        if (is_wp_error($response)) {
-            // Log error
-            error_log('Gemini API Error: ' . $response->get_error_message());
-            return "I'm having trouble connecting to my brain right now. Let me fall back to what I know: " .
-                $this->get_keyword_response($message);
+    private function get_gemini_response($message) {
+        try {
+            // Prepare the knowledge base context
+            $context = $this->prepare_context_for_gemini();
+            
+            // Build the prompt
+            $prompt = $this->build_gemini_prompt($message, $context);
+            
+            // Make API request
+            $response = $this->call_gemini_api($prompt);
+            
+            // Handle API response
+            if (is_wp_error($response)) {
+                // Log error
+                error_log('Gemini API Error: ' . $response->get_error_message());
+                return "I'm having trouble connecting to my brain right now. Let me fall back to what I know: " . 
+                       $this->get_keyword_response($message);
+            }
+            
+            // Process and return the AI response
+            return $this->process_gemini_response($response);
+        } catch (Exception $e) {
+            // Catch any unexpected errors
+            error_log('Gemini API Exception: ' . $e->getMessage());
+            return "I encountered an unexpected error. Let me answer with what I know directly: " . 
+                   $this->get_keyword_response($message);
         }
-
-        // Process and return the AI response
-        return $this->process_gemini_response($response);
     }
 
     /**
@@ -128,7 +143,31 @@ class SA_Helper_Chatbot_AI
 
         return $context;
     }
-
+    
+    /**
+     * Process Gemini API response
+     *
+     * @param array $response The API response
+     * @return string The formatted response
+     */
+    private function process_gemini_response($response) {
+        if (empty($response) || !isset($response['candidates'][0]['content']['parts'][0]['text'])) {
+            return "I'm having trouble understanding right now. Let me try a different approach: " . 
+                   $this->get_keyword_response(strtolower($this->last_message));
+        }
+        
+        $text = $response['candidates'][0]['content']['parts'][0]['text'];
+        
+        // Check if the response is empty or too short (likely an error)
+        if (strlen(trim($text)) < 5) {
+            return "I received an incomplete response. Let me answer directly: " . 
+                   $this->get_keyword_response(strtolower($this->last_message));
+        }
+        
+        // Format and limit length
+        return $this->format_response($text);
+    }
+    
     /**
      * Build prompt for Gemini API
      *
@@ -136,13 +175,40 @@ class SA_Helper_Chatbot_AI
      * @param string $context Knowledge base context
      * @return array Complete prompt
      */
-    private function build_gemini_prompt($message, $context)
-    {
+    private function build_gemini_prompt($message, $context) {
+        // Save the message for potential fallback
+        $this->last_message = $message;
+        
+        // Detect potential keywords in the user's message
+        $detected_topics = [];
+        
+        if ($this->contains_keywords($message, array('company', 'about', 'who are you', 'business', 'organization'))) {
+            $detected_topics[] = 'company information';
+        }
+        
+        if ($this->contains_keywords($message, array('find', 'where', 'page', 'navigate', 'go to', 'location', 'menu'))) {
+            $detected_topics[] = 'website navigation';
+        }
+        
+        if ($this->contains_keywords($message, array('news', 'update', 'recent', 'latest', 'announcement', 'blog'))) {
+            $detected_topics[] = 'recent news';
+        }
+        
+        if ($this->contains_keywords($message, array('contact', 'email', 'phone', 'call', 'reach'))) {
+            $detected_topics[] = 'contact information';
+        }
+        
+        $detected_topics = !empty($detected_topics) 
+            ? implode(', ', $detected_topics) 
+            : 'general information';
+        
         $system_instruction = "You are a helpful assistant for a company website. " .
-            "Answer questions based on the company information provided. " .
-            "Keep responses concise (under 150 words) and helpful. " .
-            "If you don't know the answer, say so politely and suggest contacting the company directly.";
-
+                             "Answer questions based ONLY on the company information provided. " .
+                             "Keep responses concise (under 150 words) and helpful. " .
+                             "Use a friendly, professional tone. " .
+                             "If you don't know the answer based on the provided information, say so politely and suggest contacting the company directly.";
+        
+        // Enhanced prompt with topic focus guidance
         $prompt = [
             'contents' => [
                 [
@@ -223,21 +289,20 @@ class SA_Helper_Chatbot_AI
         // Return mapped model name if exists, otherwise return original
         return isset($model_mapping[$model_name]) ? $model_mapping[$model_name] : $model_name;
     }
-
+    
     /**
      * Process Gemini API response
      *
      * @param array $response The API response
      * @return string The formatted response
      */
-    private function process_gemini_response($response)
-    {
+    private function process_gemini_response($response) {
         if (empty($response) || !isset($response['candidates'][0]['content']['parts'][0]['text'])) {
             return "I'm having trouble understanding right now. Please try asking a different question.";
         }
-
+        
         $text = $response['candidates'][0]['content']['parts'][0]['text'];
-
+        
         // Format and limit length
         return $this->format_response($text);
     }

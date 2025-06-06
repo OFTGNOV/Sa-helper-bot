@@ -80,7 +80,7 @@ class SA_Helper_Chatbot_Public {
         
         // Get the message
         $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
-          if (empty($message)) {
+        if (empty($message)) {
             wp_send_json_error('Empty message');
             return;
         }
@@ -91,13 +91,24 @@ class SA_Helper_Chatbot_Public {
             return;
         }
         
-        // Get response from AI handler
-        $response = $this->ai_handler->get_response($message);
-        
-        // Send the response
-        wp_send_json_success(array(
-            'response' => $response
-        ));
+        try {
+            // Get response from AI handler
+            $response = $this->ai_handler->get_response($message);
+            
+            // Send the response
+            wp_send_json_success(array(
+                'response' => $response
+            ));
+        } catch (Exception $e) {
+            // Log the error
+            error_log('SA Helper Bot Error: ' . $e->getMessage());
+            
+            // Send fallback response
+            wp_send_json_success(array(
+                'response' => "I'm having trouble processing your request right now. Let me try again with a simpler approach.",
+                'error' => true
+            ));
+        }
     }
 
     /**
