@@ -33,9 +33,14 @@ class SA_Helper_Chatbot_AI {
         $options = get_option('sa_helper_chatbot_options', array());
         $this->api_settings = isset($options['gemini_api']) ? $options['gemini_api'] : array(
             'api_key' => '',
-            'model' => 'gemini-pro',
+            'model' => 'gemini-1.5-pro',
             'enable' => false,
         );
+        
+        // Ensure backward compatibility with older model names
+        if (isset($this->api_settings['model'])) {
+            $this->api_settings['model'] = $this->get_compatible_model_name($this->api_settings['model']);
+        }
     }
 
     /**
@@ -156,7 +161,7 @@ class SA_Helper_Chatbot_AI {
      */
     private function call_gemini_api($prompt) {
         $api_key = $this->api_settings['api_key'];
-        $model = $this->api_settings['model'] ?: 'gemini-pro';
+        $model = $this->get_compatible_model_name($this->api_settings['model'] ?: 'gemini-1.5-pro');
         $endpoint = "https://generativelanguage.googleapis.com/v1/models/$model:generateContent?key=$api_key";
         
         $args = array(
@@ -182,6 +187,24 @@ class SA_Helper_Chatbot_AI {
         }
         
         return json_decode($response_body, true);
+    }
+    
+    /**
+     * Ensures model name is compatible with current API
+     * 
+     * @param string $model_name The model name to check
+     * @return string Updated model name
+     */
+    private function get_compatible_model_name($model_name) {
+        $model_mapping = [
+            // Legacy model names to new model names
+            'gemini-pro' => 'gemini-1.5-pro',
+            'gemini-ultra' => 'gemini-1.5-pro',
+            'gemini-pro-vision' => 'gemini-1.0-pro-vision'
+        ];
+        
+        // Return mapped model name if exists, otherwise return original
+        return isset($model_mapping[$model_name]) ? $model_mapping[$model_name] : $model_name;
     }
     
     /**

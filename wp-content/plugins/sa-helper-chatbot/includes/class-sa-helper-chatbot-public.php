@@ -58,12 +58,12 @@ class SA_Helper_Chatbot_Public {
     public function display_chatbot() {
         $options = get_option('sa_helper_chatbot_options', array());
         
-        // Check if chatbot is enabled
-        if (isset($options['general']['enable']) && !$options['general']['enable']) {
+        // Check if chatbot is enabled - default to true if setting doesn't exist
+        if (isset($options['general']['enable']) && $options['general']['enable'] === false) {
             return;
         }
         
-        // Get chatbot settings
+        // Get chatbot settings with defaults
         $title = isset($options['general']['title']) ? $options['general']['title'] : 'Helper Bot';
         $welcome_message = isset($options['general']['welcome_message']) ? $options['general']['welcome_message'] : 'Hello! How can I help you today?';
         

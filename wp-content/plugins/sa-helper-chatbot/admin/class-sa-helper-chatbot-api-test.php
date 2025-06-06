@@ -22,7 +22,7 @@ function sa_helper_display_api_test_page() {
         'model' => 'gemini-pro'
     );
     
-    $is_enabled = isset($api_settings['enable']) && $api_settings['enable'] === true;
+    $is_enabled = isset($api_settings['enable']) && $api_settings['enable'] == '1';
     $has_api_key = !empty($api_settings['api_key']);
     $model = isset($api_settings['model']) ? $api_settings['model'] : 'gemini-pro';
     
@@ -114,6 +114,19 @@ function sa_helper_display_api_test_page() {
         </form>
     </div>
     <style>
+        .api-status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .api-status-enabled {
+            background-color: #46b450;
+        }
+        .api-status-disabled {
+            background-color: #dc3232;
+        }
         .api-test-results {
             margin-top: 20px;
             padding: 15px;
@@ -144,7 +157,19 @@ function sa_helper_display_api_test_page() {
  */
 function sa_helper_test_api_connection($message, $api_settings) {
     $api_key = $api_settings['api_key'];
-    $model = isset($api_settings['model']) ? $api_settings['model'] : 'gemini-pro';
+    $model = isset($api_settings['model']) ? $api_settings['model'] : 'gemini-1.5-pro';
+    
+    // Ensure backward compatibility with older model names
+    $model_mapping = [
+        'gemini-pro' => 'gemini-1.5-pro',
+        'gemini-ultra' => 'gemini-1.5-pro',
+        'gemini-pro-vision' => 'gemini-1.0-pro-vision'
+    ];
+    
+    if (isset($model_mapping[$model])) {
+        $model = $model_mapping[$model];
+    }
+    
     $endpoint = "https://generativelanguage.googleapis.com/v1/models/$model:generateContent?key=$api_key";
     
     $prompt = [

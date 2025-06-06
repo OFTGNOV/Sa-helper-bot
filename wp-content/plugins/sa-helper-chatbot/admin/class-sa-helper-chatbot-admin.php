@@ -53,18 +53,18 @@ class SA_Helper_Chatbot_Admin {
             <h1><?php echo esc_html(get_admin_page_title()); ?></h1>
             <form method="post" action="options.php">
                 <?php
-                // Register both setting groups so they can be saved together
+                // Only register one settings group at a time
                 settings_fields('sa_helper_chatbot_options');
                 do_settings_sections('sa_helper_chatbot_options');
-                
-                // Add the knowledge base settings field
-                settings_fields('sa_helper_chatbot_knowledge');
                 ?>
                 
                 <div class="sa-helper-chatbot-knowledge-base">
                     <h2>Knowledge Base</h2>
                     <p>Add information about your company, website navigation, and recent news for the chatbot to use.</p>
-                    <?php $this->display_knowledge_base_editor(); ?>
+                    <?php 
+                    // Don't call settings_fields again - it was already called above
+                    $this->display_knowledge_base_editor(); 
+                    ?>
                 </div>
                 
                 <?php submit_button(); ?>
@@ -77,10 +77,11 @@ class SA_Helper_Chatbot_Admin {
      * Register settings
      */   
     public function register_settings() {
-        // Register all settings at once
-        register_setting('sa_helper_chatbot_options', 'sa_helper_chatbot_options');
+        // Register each setting only once
+        register_setting('sa_helper_chatbot_options', 'sa_helper_chatbot_options', array(
+            'sanitize_callback' => array($this, 'sanitize_options')
+        ));
         register_setting('sa_helper_chatbot_options', 'sa_helper_chatbot_knowledge');
-        register_setting('sa_helper_chatbot_knowledge', 'sa_helper_chatbot_knowledge');
 
         // General Settings Section
         add_settings_section(
@@ -90,20 +91,20 @@ class SA_Helper_Chatbot_Admin {
             'sa_helper_chatbot_options'
         );
 
-        // Add chatbot name field
+        // Add chatbot enable field
         add_settings_field(
-            'chatbot_name',
-            'Chatbot Name',
-            array($this, 'chatbot_name_field_callback'),
+            'enable_chatbot',
+            'Enable Chatbot',
+            array($this, 'enable_chatbot_field_callback'),
             'sa_helper_chatbot_options',
             'sa_helper_chatbot_general_section'
         );
 
-        // Add chat bubble color field
+        // Add chatbot title field
         add_settings_field(
-            'chat_bubble_color',
-            'Chat Bubble Color',
-            array($this, 'chat_bubble_color_field_callback'),
+            'chatbot_title',
+            'Chatbot Title',
+            array($this, 'chatbot_title_field_callback'),
             'sa_helper_chatbot_options',
             'sa_helper_chatbot_general_section'
         );
@@ -154,6 +155,26 @@ class SA_Helper_Chatbot_Admin {
     }
 
     /**
+     * Sanitize the options before saving
+     */
+    public function sanitize_options($options) {
+        // Make sure we preserve existing settings when updating
+        $old_options = get_option('sa_helper_chatbot_options', array());
+        $options = wp_parse_args($options, $old_options);
+        
+        // Ensure nested arrays exist
+        if (!isset($options['general'])) {
+            $options['general'] = array();
+        }
+        
+        if (!isset($options['gemini_api'])) {
+            $options['gemini_api'] = array();
+        }
+        
+        return $options;
+    }
+
+    /**
      * General settings section callback
      */
     public function general_settings_section_callback() {
@@ -161,28 +182,31 @@ class SA_Helper_Chatbot_Admin {
     }
 
     /**
-     * Chatbot name field callback
+     * Enable chatbot field callback
      */
-    public function chatbot_name_field_callback() {
-        $options = get_option('sa_helper_chatbot_options');
-        $name = isset($options['chatbot_name']) ? $options['chatbot_name'] : 'SA Helper';
-        echo '<input type="text" name="sa_helper_chatbot_options[chatbot_name]" value="' . esc_attr($name) . '" />';
+    public function enable_chatbot_field_callback() {
+        $options = get_option('sa_helper_chatbot_options', array());
+        $enabled = isset($options['general']['enable']) ? $options['general']['enable'] : true;
+        echo '<input type="checkbox" name="sa_helper_chatbot_options[general][enable]" value="1" ' . checked($enabled, true, false) . ' />';
+        echo '<span class="description">Enable or disable the chatbot on your website</span>';
     }
 
     /**
-     * Chat bubble color field callback
+     * Chatbot title field callback
      */
-    public function chat_bubble_color_field_callback() {
-        $options = get_option('sa_helper_chatbot_options');
-        $color = isset($options['chat_bubble_color']) ? $options['chat_bubble_color'] : '#4a90e2';
-        echo '<input type="color" name="sa_helper_chatbot_options[chat_bubble_color]" value="' . esc_attr($color) . '" />';
-    }    /**
+    public function chatbot_title_field_callback() {
+        $options = get_option('sa_helper_chatbot_options', array());
+        $title = isset($options['general']['title']) ? $options['general']['title'] : 'Helper Bot';
+        echo '<input type="text" name="sa_helper_chatbot_options[general][title]" value="' . esc_attr($title) . '" />';
+    }
+
+    /**
      * Welcome message field callback
      */
     public function welcome_message_field_callback() {
-        $options = get_option('sa_helper_chatbot_options');
-        $message = isset($options['welcome_message']) ? $options['welcome_message'] : 'Hi there! How can I help you today?';
-        echo '<textarea name="sa_helper_chatbot_options[welcome_message]" rows="3" cols="50">' . esc_textarea($message) . '</textarea>';
+        $options = get_option('sa_helper_chatbot_options', array());
+        $message = isset($options['general']['welcome_message']) ? $options['general']['welcome_message'] : 'Hi there! How can I help you today?';
+        echo '<textarea name="sa_helper_chatbot_options[general][welcome_message]" rows="3" cols="50">' . esc_textarea($message) . '</textarea>';
     }
 
     /**
@@ -197,7 +221,7 @@ class SA_Helper_Chatbot_Admin {
      * Enable Gemini API callback
      */
     public function gemini_api_enable_callback() {
-        $options = get_option('sa_helper_chatbot_options');
+        $options = get_option('sa_helper_chatbot_options', array());
         $enabled = isset($options['gemini_api']['enable']) ? $options['gemini_api']['enable'] : false;
         echo '<input type="checkbox" name="sa_helper_chatbot_options[gemini_api][enable]" value="1" ' . checked($enabled, true, false) . ' />';
         echo '<span class="description">Enable Gemini AI for more intelligent responses (requires API key)</span>';
@@ -207,7 +231,7 @@ class SA_Helper_Chatbot_Admin {
      * Gemini API key callback
      */
     public function gemini_api_key_callback() {
-        $options = get_option('sa_helper_chatbot_options');
+        $options = get_option('sa_helper_chatbot_options', array());
         $api_key = isset($options['gemini_api']['api_key']) ? $options['gemini_api']['api_key'] : '';
         
         echo '<input type="password" name="sa_helper_chatbot_options[gemini_api][api_key]" value="' . esc_attr($api_key) . '" class="regular-text" autocomplete="off" />';
@@ -220,13 +244,14 @@ class SA_Helper_Chatbot_Admin {
      * Gemini model selection callback
      */
     public function gemini_model_callback() {
-        $options = get_option('sa_helper_chatbot_options');
-        $selected_model = isset($options['gemini_api']['model']) ? $options['gemini_api']['model'] : 'gemini-pro';
+        $options = get_option('sa_helper_chatbot_options', array());
+        $selected_model = isset($options['gemini_api']['model']) ? $options['gemini_api']['model'] : 'gemini-1.5-pro';
         
         $models = array(
-            'gemini-pro' => 'Gemini Pro (Recommended)',
-            'gemini-pro-vision' => 'Gemini Pro Vision (Supports images)',
-            'gemini-ultra' => 'Gemini Ultra (Higher performance, if available)'
+            'gemini-1.5-pro' => 'Gemini 1.5 Pro (Recommended)',
+            'gemini-1.5-flash' => 'Gemini 1.5 Flash (Faster, more efficient)',
+            'gemini-1.0-pro' => 'Gemini 1.0 Pro (Legacy)',
+            'gemini-1.0-pro-vision' => 'Gemini 1.0 Pro Vision (Supports images, legacy)'
         );
         
         echo '<select name="sa_helper_chatbot_options[gemini_api][model]">';
