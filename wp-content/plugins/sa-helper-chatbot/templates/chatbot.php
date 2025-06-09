@@ -20,9 +20,8 @@ if (!defined('WPINC')) {
             <div class="sa-helper-chatbot-title" id="chatbot-title"><?php echo esc_html($title); ?></div>
             <div class="sa-helper-chatbot-close" role="button" aria-label="Close chat" tabindex="0">&times;</div>
         </div>
-        
-        <div class="sa-helper-chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages">
-            <div class="sa-helper-chatbot-message bot welcome-message">
+          <div class="sa-helper-chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages">
+            <div class="sa-helper-chatbot-message bot">
                 <?php echo esc_html($welcome_message); ?>
             </div>
         </div>
