@@ -33,12 +33,11 @@ function sa_helper_check_requirements() {
             $missing_extensions[] = $ext;
         }
     }
-    
-    if (!empty($missing_extensions)) {
-        add_action('admin_notices', function() use ($missing_extensions) {
-            $message = sprintf(
+      if (!empty($missing_extensions)) {
+        add_action('admin_notices', function() use ($missing_extensions) {            $message = sprintf(
+                /* translators: %s: List of missing PHP extensions */
                 __('SA Helper Chatbot requires the following PHP extensions to use Gemini API: %s. Please contact your host to enable these extensions.', 'sa-helper-chatbot'),
-                '<strong>' . implode(', ', $missing_extensions) . '</strong>'
+                '<strong>' . esc_html(implode(', ', $missing_extensions)) . '</strong>'
             );
             printf('<div class="notice notice-error"><p>%s</p></div>', $message);
         });

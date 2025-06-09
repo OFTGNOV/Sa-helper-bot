@@ -58,7 +58,7 @@ function sa_helper_display_api_test_page() {
             <div class="notice notice-warning">
                 <p>
                     <strong>API is not fully configured.</strong> 
-                    Please <a href="<?php echo admin_url('admin.php?page=sa-helper-chatbot'); ?>">enable the API and set your API key</a> before testing.
+                    Please <a href="<?php echo esc_url(admin_url('admin.php?page=sa-helper-chatbot')); ?>">enable the API and set your API key</a> before testing.
                 </p>
             </div>
         <?php endif; ?>
