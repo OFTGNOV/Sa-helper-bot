@@ -141,7 +141,12 @@
             const $messages = $('.sa-helper-chatbot-messages');
             const $message = $('<div>').addClass('sa-helper-chatbot-message').addClass(sender).text(message);
             $messages.append($message);
-            scrollToBottom();
+            
+            // Force scroll to bottom after a short delay to ensure DOM is updated
+            setTimeout(() => {
+                scrollToBottom();
+            }, 50);
+            
             return $message;
         }
         
@@ -200,7 +205,12 @@
           // Function to scroll to bottom of chat
         function scrollToBottom() {
             const $messages = $('.sa-helper-chatbot-messages');
-            $messages.scrollTop($messages[0].scrollHeight);
+            if ($messages.length) {
+                const scrollHeight = $messages[0].scrollHeight;
+                $messages.stop().animate({
+                    scrollTop: scrollHeight
+                }, 300);
+            }
         }
 
         // Enhanced page content extraction
@@ -330,7 +340,10 @@
                 }
             });
             
-            scrollToBottom();
+            // Ensure scroll to bottom after loading history
+            setTimeout(() => {
+                scrollToBottom();
+            }, 100);
         }
 
         // Clear conversation history function (can be called externally)
