@@ -23,21 +23,48 @@ class SA_Helper_Chatbot_AI
     private $api_settings;
 
     /**
+     * Session conversation data
+     *
+     * @var array
+     */
+    private $session_data;
+
+    /**
      * Initialize the class
      */
     public function __construct()
     {
+        $this->load_knowledge_base();
+        $this->load_api_settings();
+        $this->init_session();
+    }
+
+    /**
+     * Load knowledge base from WordPress options
+     */
+    private function load_knowledge_base()
+    {
         $this->knowledge = get_option('sa_helper_chatbot_knowledge', array(
             'company_info' => '',
             'website_navigation' => '',
-            'recent_news' => ''
+            'recent_news' => '',
+            'faq' => ''
         ));
+    }
 
+    /**
+     * Load API settings from WordPress options
+     */
+    private function load_api_settings()
+    {
         $options = get_option('sa_helper_chatbot_options', array());
         $this->api_settings = isset($options['gemini_api']) ? $options['gemini_api'] : array(
             'api_key' => '',
             'model' => 'gemini-1.5-pro',
             'enable' => false,
+            'include_page_content' => true,
+            'temperature' => 0.7,
+            'max_tokens' => 800
         );
 
         // Ensure backward compatibility with older model names
@@ -47,28 +74,91 @@ class SA_Helper_Chatbot_AI
     }
 
     /**
+     * Initialize session data for conversation persistence
+     */
+    private function init_session()
+    {
+        if (!session_id()) {
+            session_start();
+        }
+        
+        if (!isset($_SESSION['sa_helper_chatbot'])) {
+            $_SESSION['sa_helper_chatbot'] = array(
+                'conversation_history' => array(),
+                'session_id' => uniqid('sa_chat_', true),
+                'started_at' => time()
+            );
+        }
+        
+        $this->session_data = &$_SESSION['sa_helper_chatbot'];
+    }    /**
      * Get a response based on the user's message
      *
      * @param string $message The user's message
+     * @param string $page_content Optional. The content of the current page.
      * @return string The chatbot's response
      */
-    public function get_response($message) {
-        // First try to use Gemini API if it's configured
+    public function get_response($message, $page_content = '') {
+        // Allow filtering of the incoming message
+        $message = apply_filters('sa_helper_chatbot_filter_message', $message);
+        $page_content = apply_filters('sa_helper_chatbot_filter_page_content', $page_content);
+        
+        // Validate input
+        if (empty(trim($message))) {
+            error_log('SA Helper Bot: Empty message received');
+            return "I didn't receive a message. Could you please try typing your question again?";
+        }
+
+        // Store conversation history
+        $this->store_user_message($message);
+        
+        // Log the request for debugging (without sensitive data)
+        error_log('SA Helper Bot: Processing message from user, length: ' . strlen($message) . ', page content length: ' . strlen($page_content));
+        
+        // Allow plugins to modify the behavior before processing
+        do_action('sa_helper_chatbot_before_response', $message, $page_content);
+        
         if ($this->is_gemini_api_configured()) {
-            $gemini_response = $this->get_gemini_response($message);
-            
-            // If the response doesn't contain an error indicator, return it
-            if (strpos($gemini_response, "I'm having trouble") === false && 
-                strpos($gemini_response, "Let me fall back") === false) {
-                return $gemini_response;
+            try {
+                // Try Gemini first with prioritized page content
+                $response = $this->get_gemini_response($message, $page_content);
+                
+                // Validate Gemini response quality
+                if ($this->is_valid_gemini_response($response)) {
+                    // Allow filtering of the Gemini response
+                    $response = apply_filters('sa_helper_chatbot_filter_gemini_response', $response, $message, $page_content);
+                    $this->store_bot_response($response);
+                    error_log('SA Helper Bot: Successfully generated Gemini response');
+                    
+                    // Allow plugins to hook after successful Gemini response
+                    do_action('sa_helper_chatbot_after_gemini_response', $response, $message);
+                    return $response;
+                }
+                
+                // If Gemini response is invalid, fall back to keyword matching
+                error_log('SA Helper Bot: Gemini response was invalid or insufficient for message: ' . substr($message, 0, 50) . '...');
+                
+            } catch (Exception $e) {
+                error_log('SA Helper Bot: Gemini API Exception: ' . $e->getMessage() . ' for message: ' . substr($message, 0, 50) . '...');
+                do_action('sa_helper_chatbot_gemini_error', $e, $message);
             }
-            
-            // If we got an error response, log it
-            error_log('SA Helper Bot: Gemini API response contained an error. Falling back to keyword matching.');
+        } else {
+            error_log('SA Helper Bot: Gemini API not configured, using keyword fallback');
         }
         
-        // Fall back to keyword matching if API is not configured or returned an error
-        return $this->get_keyword_response($message);
+        // Use keyword-based fallback only when Gemini is unavailable or fails
+        $fallback_response = $this->get_keyword_response($message, $page_content);
+        
+        // Allow filtering of the fallback response
+        $fallback_response = apply_filters('sa_helper_chatbot_filter_fallback_response', $fallback_response, $message, $page_content);
+        
+        $this->store_bot_response($fallback_response);
+        error_log('SA Helper Bot: Using keyword-based fallback response');
+        
+        // Allow plugins to hook after fallback response
+        do_action('sa_helper_chatbot_after_fallback_response', $fallback_response, $message);
+        
+        return $fallback_response;
     }
     
     /**
@@ -83,65 +173,83 @@ class SA_Helper_Chatbot_AI
             $this->api_settings['enable'] === true &&
             !empty($this->api_settings['api_key'])
         );
-    }
-
-    /**
+    }    /**
      * Get response from Gemini API
      *
      * @param string $message The user's message
+     * @param string $page_content The content of the current page
      * @return string The AI-generated response
      */
-    private function get_gemini_response($message) {
+    private function get_gemini_response($message, $page_content = '') {
         try {
-            // Prepare the knowledge base context
-            $context = $this->prepare_context_for_gemini();
+            // Prepare context with page content prioritized
+            $context = $this->prepare_context_for_gemini($page_content);
             
             // Build the prompt
-            $prompt = $this->build_gemini_prompt($message, $context);
+            $prompt = $this->build_gemini_prompt($message, $context, !empty(trim($page_content)));
             
             // Make API request
             $response = $this->call_gemini_api($prompt);
             
             // Handle API response
             if (is_wp_error($response)) {
-                // Log error
                 error_log('Gemini API Error: ' . $response->get_error_message());
-                return "I'm having trouble connecting to my brain right now. Let me fall back to what I know: " . 
-                       $this->get_keyword_response($message);
+                throw new Exception('Gemini API Error: ' . $response->get_error_message());
             }
             
             // Process and return the AI response
-            return $this->process_gemini_response($response);
+            return $this->process_gemini_response($response, $message);
         } catch (Exception $e) {
-            // Catch any unexpected errors
             error_log('Gemini API Exception: ' . $e->getMessage());
-            return "I encountered an unexpected error. Let me answer with what I know directly: " . 
-                   $this->get_keyword_response($message);
+            throw $e;
         }
-    }
-
-    /**
+    }    /**
      * Prepare context from knowledge base for Gemini
      *
-     * @return string Context from knowledge base
+     * @param string $page_content Optional. The content of the current page.
+     * @return string Context from knowledge base and page content
      */
-    private function prepare_context_for_gemini()
+    private function prepare_context_for_gemini($page_content = '')
     {
-        $context = "";
+        $context_parts = [];
 
+        // PRIORITIZE: Current page content first
+        if (!empty($page_content)) {
+            // Sanitize and truncate page content to avoid overly long contexts
+            $page_content_cleaned = wp_strip_all_tags($page_content);
+            if (strlen($page_content_cleaned) > 3000) { // Limit page content length
+                $page_content_cleaned = substr($page_content_cleaned, 0, 3000) . "...";
+            }
+            $context_parts[] = "CURRENT PAGE CONTENT (Primary source - prioritize this information):\n" . $page_content_cleaned;
+        }
+
+        // SECONDARY: Knowledge base content for additional context
+        $knowledge_base_content = "";
         if (!empty($this->knowledge['company_info'])) {
-            $context .= "COMPANY INFORMATION:\n" . strip_tags($this->knowledge['company_info']) . "\n\n";
+            $knowledge_base_content .= "Company Information:\n" . wp_strip_all_tags($this->knowledge['company_info']) . "\n\n";
         }
 
         if (!empty($this->knowledge['website_navigation'])) {
-            $context .= "WEBSITE NAVIGATION:\n" . strip_tags($this->knowledge['website_navigation']) . "\n\n";
+            $knowledge_base_content .= "Website Navigation Tips:\n" . wp_strip_all_tags($this->knowledge['website_navigation']) . "\n\n";
         }
 
         if (!empty($this->knowledge['recent_news'])) {
-            $context .= "RECENT NEWS:\n" . strip_tags($this->knowledge['recent_news']) . "\n\n";
+            $knowledge_base_content .= "Recent News & Updates:\n" . wp_strip_all_tags($this->knowledge['recent_news']) . "\n\n";
+        }
+        
+        if (!empty($this->knowledge['faq'])) {
+            $knowledge_base_content .= "Frequently Asked Questions (FAQ):\n" . wp_strip_all_tags($this->knowledge['faq']) . "\n\n";
         }
 
-        return $context;
+        if (!empty($knowledge_base_content)) {
+            $context_parts[] = "KNOWLEDGE BASE (Supplementary information - use if current page content is insufficient):\n" . $knowledge_base_content;
+        }
+        
+        if (empty($context_parts)) {
+            return "No specific context available. Please answer generally but helpfully.";
+        }
+
+        return implode("\n\n---\n\n", $context_parts);
     }
     
     /**
@@ -150,84 +258,188 @@ class SA_Helper_Chatbot_AI
      * @param array $response The API response
      * @return string The formatted response
      */
-    private function process_gemini_response($response) {
+    private function process_gemini_response($response, $original_message = '') {
         if (empty($response) || !isset($response['candidates'][0]['content']['parts'][0]['text'])) {
-            return "I'm having trouble understanding right now. Let me try a different approach: " . 
-                   $this->get_keyword_response(strtolower($this->last_message));
+            return $this->get_fallback_message_for_gemini_failure($original_message);
         }
         
         $text = $response['candidates'][0]['content']['parts'][0]['text'];
         
-        // Check if the response is empty or too short (likely an error)
-        if (strlen(trim($text)) < 5) {
-            return "I received an incomplete response. Let me answer directly: " . 
-                   $this->get_keyword_response(strtolower($this->last_message));
+        // Check if the response is empty, too short, or a generic refusal (might indicate API couldn't answer)
+        if (strlen(trim($text)) < 10 || stripos($text, "I cannot provide information") !== false || stripos($text, "I'm sorry, but I cannot") !== false ) {
+            return $this->get_fallback_message_for_gemini_failure($original_message);
         }
         
         // Format and limit length
         return $this->format_response($text);
+    }    private function get_fallback_message_for_gemini_failure($original_message = '') {
+        // This message signals to get_response that Gemini truly failed and keyword fallback should be used.
+        // It's a unique string that process_gemini_response returns.
+        // The actual user-facing message will come from get_keyword_response.
+        return "GEMINI_API_FAILURE_FALLBACK_TRIGGER"; 
     }
-    
+
     /**
+     * Store user message in session for conversation history
+     *
+     * @param string $message The user's message
+     */
+    private function store_user_message($message) {
+        if (!isset($this->session_data['conversation_history'])) {
+            $this->session_data['conversation_history'] = array();
+        }
+        
+        $this->session_data['conversation_history'][] = array(
+            'type' => 'user',
+            'message' => sanitize_text_field($message),
+            'timestamp' => current_time('timestamp')
+        );
+        
+        // Limit conversation history to last 20 messages to prevent memory issues
+        if (count($this->session_data['conversation_history']) > 20) {
+            $this->session_data['conversation_history'] = array_slice($this->session_data['conversation_history'], -20);
+        }
+    }
+
+    /**
+     * Store bot response in session for conversation history
+     *
+     * @param string $response The bot's response
+     */
+    private function store_bot_response($response) {
+        if (!isset($this->session_data['conversation_history'])) {
+            $this->session_data['conversation_history'] = array();
+        }
+        
+        $this->session_data['conversation_history'][] = array(
+            'type' => 'bot',
+            'message' => sanitize_text_field($response),
+            'timestamp' => current_time('timestamp')
+        );
+        
+        // Limit conversation history to last 20 messages to prevent memory issues
+        if (count($this->session_data['conversation_history']) > 20) {
+            $this->session_data['conversation_history'] = array_slice($this->session_data['conversation_history'], -20);
+        }
+    }
+
+    /**
+     * Validate Gemini response quality
+     *
+     * @param string $response The response to validate
+     * @return bool True if response is valid, false otherwise
+     */
+    private function is_valid_gemini_response($response) {
+        // Check if response is empty or failure trigger
+        if (empty($response) || $response === $this->get_fallback_message_for_gemini_failure()) {
+            return false;
+        }
+        
+        // Check if response is too short (likely incomplete)
+        if (strlen(trim($response)) < 10) {
+            return false;
+        }
+        
+        // Check for generic refusals that indicate API couldn't answer
+        $refusal_patterns = array(
+            "I cannot provide information",
+            "I'm sorry, but I cannot",
+            "I don't have access to",
+            "I'm unable to provide",
+            "I can't help with that"
+        );
+        
+        foreach ($refusal_patterns as $pattern) {
+            if (stripos($response, $pattern) !== false) {
+                return false;
+            }
+        }
+          return true;
+    }
+
+    /**
+     * Get conversation history for current session
+     *
+     * @return array Conversation history
+     */
+    public function get_conversation_history() {
+        return isset($this->session_data['conversation_history']) ? $this->session_data['conversation_history'] : array();
+    }
+
+    /**
+     * Clear conversation history
+     */
+    public function clear_conversation_history() {
+        if (isset($this->session_data['conversation_history'])) {
+            $this->session_data['conversation_history'] = array();
+        }
+        do_action('sa_helper_chatbot_conversation_cleared');
+    }
+
+    /**
+     * Get session statistics
+     *
+     * @return array Session stats
+     */
+    public function get_session_stats() {
+        $history = $this->get_conversation_history();
+        return array(
+            'session_id' => isset($this->session_data['session_id']) ? $this->session_data['session_id'] : '',
+            'started_at' => isset($this->session_data['started_at']) ? $this->session_data['started_at'] : 0,
+            'message_count' => count($history),
+            'user_messages' => count(array_filter($history, function($item) { return $item['type'] === 'user'; })),
+            'bot_messages' => count(array_filter($history, function($item) { return $item['type'] === 'bot'; }))
+        );
+    }
+      /**
      * Build prompt for Gemini API
      *
      * @param string $message User's message
      * @param string $context Knowledge base context
+     * @param bool $page_content_available Flag indicating if page content is available
      * @return array Complete prompt
      */
-    private function build_gemini_prompt($message, $context) {
-        // Save the message for potential fallback
-        $this->last_message = $message;
+    private function build_gemini_prompt($message, $context, $page_content_available = false) {
+        $priority_instruction = $page_content_available 
+            ? "First and most importantly, check if the answer can be found in the 'CURRENT PAGE CONTENT' section. This should be your primary source. If the information on the current page is insufficient or doesn't answer the user's question, then supplement with information from the 'KNOWLEDGE BASE' section."
+            : "Use the information from the 'KNOWLEDGE BASE' section to answer the question.";
+
+        $system_instruction = "You are an intelligent and helpful virtual assistant for this website. Your goal is to provide accurate, helpful, and engaging responses to user questions. " .
+                             $priority_instruction . " " .
+                             "IMPORTANT INSTRUCTIONS:\n" .
+                             "1. Do NOT simply copy text word-for-word from the provided context\n" .
+                             "2. Synthesize the information and explain it in your own words in a natural, conversational way\n" .
+                             "3. If you find relevant FAQ information, answer comprehensively but naturally\n" .
+                             "4. If the user's question cannot be answered from the provided context, politely say so and suggest alternatives (like contacting support or checking specific pages)\n" .
+                             "5. Keep responses concise but complete, ideally under 150 words unless more detail is truly needed\n" .
+                             "6. Use a friendly, professional tone\n" .
+                             "7. If multiple pieces of information are relevant, prioritize the most directly relevant to the user's question\n\n" .
+                             "User's question: \"" . esc_html($message) . "\"\n\n" .
+                             "Available context:\n" . $context;
         
-        // Detect potential keywords in the user's message
-        $detected_topics = [];
-        
-        if ($this->contains_keywords($message, array('company', 'about', 'who are you', 'business', 'organization'))) {
-            $detected_topics[] = 'company information';
-        }
-        
-        if ($this->contains_keywords($message, array('find', 'where', 'page', 'navigate', 'go to', 'location', 'menu'))) {
-            $detected_topics[] = 'website navigation';
-        }
-        
-        if ($this->contains_keywords($message, array('news', 'update', 'recent', 'latest', 'announcement', 'blog'))) {
-            $detected_topics[] = 'recent news';
-        }
-        
-        if ($this->contains_keywords($message, array('contact', 'email', 'phone', 'call', 'reach'))) {
-            $detected_topics[] = 'contact information';
-        }
-        
-        $detected_topics = !empty($detected_topics) 
-            ? implode(', ', $detected_topics) 
-            : 'general information';
-        
-        $system_instruction = "You are a helpful assistant for a company website. " .
-                             "Answer questions based ONLY on the company information provided. " .
-                             "Keep responses concise (under 150 words) and helpful. " .
-                             "Use a friendly, professional tone. " .
-                             "If you don't know the answer based on the provided information, say so politely and suggest contacting the company directly.";
-        
-        // Enhanced prompt with topic focus guidance
+        // The prompt structure for Gemini API
         $prompt = [
             'contents' => [
                 [
-                    'role' => 'assistant',
-                    'parts' => [
-                        ['text' => "Here is information about the company:\n\n$context\n\nUser question: $message"]
-                    ],
-                ],
-                [
-                    'role' => 'system',
+                    'role' => 'user', 
                     'parts' => [
                         ['text' => $system_instruction]
-                    ]
-
-                ]
+                    ],
+                ],
             ],
             'generationConfig' => [
-                'temperature' => 0.6,
-                'maxOutputTokens' => 800,
+                'temperature' => isset($this->api_settings['temperature']) ? (float) $this->api_settings['temperature'] : 0.7,
+                'maxOutputTokens' => isset($this->api_settings['max_tokens']) ? (int) $this->api_settings['max_tokens'] : 800,
+            ],
+            'safetySettings' => [
+                [
+                    'category' => 'HARM_CATEGORY_HARASSMENT',
+                    'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'
+                ],
+                [
+                    'category' => 'HARM_CATEGORY_HATE_SPEECH',
+                    'threshold' => 'BLOCK_MEDIUM_AND_ABOVE'
+                ],
             ],
         ];
 
@@ -295,20 +507,43 @@ class SA_Helper_Chatbot_AI
      *
      * @param array $response The API response
      * @return string The formatted response
-     */
-    /**
+     */    /**
      * Get response using keyword matching (fallback method)
      *
      * @param string $message The user's message
+     * @param string $page_content Optional. The content of the current page.
      * @return string The chatbot's response
      */
-    private function get_keyword_response($message)
+    private function get_keyword_response($message, $page_content = '')
     {
-        $message = strtolower($message);
+        $message_lower = strtolower($message);
 
+        // Enhanced: Add a generic "I couldn't find that with AI" type message if it reaches here after an AI attempt.
+        // This is now the primary fallback if Gemini fails or is disabled.
+        
+        $options = get_option('sa_helper_chatbot_options', array());
+        $fallback_prefix = isset($options['general']['gemini_fallback_prefix']) ? $options['general']['gemini_fallback_prefix'] : "I couldn't find a specific answer to that using my advanced understanding. However, based on common topics: ";
+        $use_prefix = $this->is_gemini_api_configured(); // Only add prefix if Gemini was supposed to be used.
+
+        if ($this->contains_keywords($message_lower, array('hello', 'hi', 'hey', 'greetings'))) {
+            return "Hello! How can I assist you today?";
+        }
+
+        if ($this->contains_keywords($message_lower, array('thank', 'thanks'))) {
+            return "You're welcome! Is there anything else I can help with?";
+        }
+
+        if ($this->contains_keywords($message_lower, array('bye', 'goodbye', 'later'))) {
+            return "Goodbye! Feel free to chat again if you have more questions.";
+        }
+        
         // Check for company information questions
-        if ($this->contains_keywords($message, array(
+        if ($this->contains_keywords($message_lower, array(
             'company',
+            'projects',
+            'products',
+            'services',
+            'solutions',
             'about',
             'who are you',
             'who is',
@@ -319,14 +554,19 @@ class SA_Helper_Chatbot_AI
             'enterprise',
             'startup',
             'agency',
+            'what do you guys do',
             'what do you do',
             'what does your company do',
+            'Where are you located?',
+            'where is your company',
             'services',
             'solutions',
             'mission',
             'vision',
             'values',
             'team',
+            'Who founded this company?',
+            'What are your working hours?',
             'founder',
             'CEO',
             'leadership',
@@ -341,17 +581,20 @@ class SA_Helper_Chatbot_AI
             'history',
             'established',
             'foundation',
+            'establishment',
+            'founded',
+            'origin',
             'introduction'
         ))) {
             if (!empty($this->knowledge['company_info'])) {
-                return $this->format_response($this->knowledge['company_info']);
+                return ($use_prefix ? $fallback_prefix : "") . $this->format_response($this->knowledge['company_info']);
             } else {
-                return "I'd be happy to tell you about our company, but it looks like that information hasn't been set up yet.";
+                return ($use_prefix ? $fallback_prefix : "") . "I don't have detailed company information available in my knowledge base right now.";
             }
         }
 
         // Check for navigation questions
-        if ($this->contains_keywords($message, array(
+        if ($this->contains_keywords($message_lower, array(
             'find',
             'where',
             'how do I',
@@ -380,14 +623,14 @@ class SA_Helper_Chatbot_AI
             'scroll'
         ))) {
             if (!empty($this->knowledge['website_navigation'])) {
-                return $this->format_response($this->knowledge['website_navigation']);
+                return ($use_prefix ? $fallback_prefix : "") . $this->format_response($this->knowledge['website_navigation']);
             } else {
-                return "I can help you navigate our website, but it seems that navigation information hasn't been set up yet.";
+                return ($use_prefix ? $fallback_prefix : "") . "I don't have specific website navigation tips in my knowledge base at the moment.";
             }
         }
 
         // Check for news and updates
-        if ($this->contains_keywords($message, array(
+        if ($this->contains_keywords($message_lower, array(
             'news',
             'update',
             'recent',
@@ -421,31 +664,25 @@ class SA_Helper_Chatbot_AI
         ))) {
 
             if (!empty($this->knowledge['recent_news'])) {
-                return $this->format_response($this->knowledge['recent_news']);
+                return ($use_prefix ? $fallback_prefix : "") . $this->format_response($this->knowledge['recent_news']);
             } else {
-                return "I'd be happy to share our latest news, but it looks like that information hasn't been updated yet.";
+                return ($use_prefix ? $fallback_prefix : "") . "I don't have any recent news updates in my knowledge base currently.";
             }
         }
 
-        // Default responses for common queries
-        if ($this->contains_keywords($message, array('hello', 'hi', 'hey', 'greetings'))) {
-            return "Hello! How can I assist you today?";
-        }
 
-        if ($this->contains_keywords($message, array('thank', 'thanks'))) {
-            return "You're welcome! Is there anything else I can help with?";
+        if ($this->contains_keywords($message_lower, array('contact', 'email', 'phone', 'call', 'reach'))) {
+            // Example: Fetch contact info from WordPress options if available, otherwise use a placeholder.
+            $contact_info = get_option('sa_helper_contact_info', "You can typically find contact details on our 'Contact Us' page.");
+            if ($contact_info === "You can typically find contact details on our 'Contact Us' page." && !empty($this->knowledge['contact_info'])) { // Fallback to KB if WP option is generic
+                 $contact_info = $this->knowledge['contact_info'];
+            }
+            return ($use_prefix ? $fallback_prefix : "") . $this->format_response($contact_info);
         }
-
-        if ($this->contains_keywords($message, array('bye', 'goodbye', 'later'))) {
-            return "Goodbye! Feel free to chat again if you have more questions.";
-        }
-
-        if ($this->contains_keywords($message, array('contact', 'email', 'phone', 'call', 'reach'))) {
-            return "You can contact us through our contact form on the website, or by calling our customer service at [your phone number].";
-        }
-
-        // Default fallback response
-        return "I'm not sure I understand. Could you rephrase your question? I can provide information about our company, help you navigate the website, or share recent news.";
+        
+        // Default fallback response if no keywords match
+        $default_fallback = "I'm having a little trouble understanding that specific question right now. Could you try rephrasing it? I can generally help with information about our company, website navigation, or recent news.";
+        return ($use_prefix ? $fallback_prefix : "") . $default_fallback;
     }
 
     /**

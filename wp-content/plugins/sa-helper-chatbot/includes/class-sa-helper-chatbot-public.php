@@ -69,21 +69,36 @@ class SA_Helper_Chatbot_Public {
         
         // Include the chatbot template
         include SA_HELPER_PATH . 'templates/chatbot.php';
-    }
-
-    /**
+    }    /**
      * Process the chatbot message via AJAX
      */
     public function process_message() {
         // Security check
         check_ajax_referer('sa-helper-chatbot-nonce', 'nonce');
         
-        // Get the message
+        // Get the message and additional data
         $message = isset($_POST['message']) ? sanitize_text_field($_POST['message']) : '';
+        $page_content = isset($_POST['page_content']) ? sanitize_textarea_field($_POST['page_content']) : '';
+        $page_url = isset($_POST['page_url']) ? esc_url_raw($_POST['page_url']) : '';
+        $page_title = isset($_POST['page_title']) ? sanitize_text_field($_POST['page_title']) : '';
+
         if (empty($message)) {
             wp_send_json_error('Empty message');
             return;
         }
+        
+        // Rate limiting check (simple implementation)
+        $user_ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $rate_limit_key = 'sa_helper_rate_limit_' . md5($user_ip);
+        $rate_limit = get_transient($rate_limit_key);
+        
+        if ($rate_limit && $rate_limit > 10) { // Max 10 requests per minute
+            wp_send_json_error(array('message' => 'Too many requests. Please wait a moment before sending another message.'));
+            return;
+        }
+        
+        // Update rate limiting
+        set_transient($rate_limit_key, ($rate_limit ?: 0) + 1, 60); // 60 seconds
         
         // Check if AI handler is available
         if (!isset($this->ai_handler)) {
@@ -91,13 +106,23 @@ class SA_Helper_Chatbot_Public {
             return;
         }
         
+        // Log the request context (for debugging)
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('SA Helper Bot Request - Page: ' . $page_title . ' (' . $page_url . '), Message length: ' . strlen($message));
+        }
+        
         try {
-            // Get response from AI handler
-            $response = $this->ai_handler->get_response($message);
+            // Get response from AI handler, passing page content as context
+            $response = $this->ai_handler->get_response($message, $page_content);
             
-            // Send the response
+            // Allow filtering of the final response
+            $response = apply_filters('sa_helper_chatbot_final_response', $response, $message, $page_content, $page_url);
+            
+            // Send the response with additional metadata
             wp_send_json_success(array(
-                'response' => $response
+                'response' => $response,
+                'session_stats' => $this->ai_handler->get_session_stats(),
+                'timestamp' => current_time('timestamp')
             ));
         } catch (Exception $e) {
             // Log the error
@@ -106,7 +131,8 @@ class SA_Helper_Chatbot_Public {
             // Send fallback response
             wp_send_json_success(array(
                 'response' => "I'm having trouble processing your request right now. Let me try again with a simpler approach.",
-                'error' => true
+                'error' => true,
+                'timestamp' => current_time('timestamp')
             ));
         }
     }

@@ -40,12 +40,17 @@ class SA_Helper_Chatbot {
           // The class responsible for defining all actions that occur in the public-facing side of the site
         require_once SA_HELPER_PATH . 'includes/class-sa-helper-chatbot-public.php';        // The class responsible for handling chatbot responses
         require_once SA_HELPER_PATH . 'includes/class-sa-helper-chatbot-ai.php';
-        
-        // Include API testing functionality (admin only) if file exists
+          // Include API testing functionality (admin only) if file exists
         if (is_admin()) {
             $api_test_file = SA_HELPER_PATH . 'admin/class-sa-helper-chatbot-api-test.php';
             if (file_exists($api_test_file)) {
                 require_once $api_test_file;
+            }
+            
+            // Include dashboard functionality
+            $dashboard_file = SA_HELPER_PATH . 'admin/class-sa-helper-chatbot-dashboard.php';
+            if (file_exists($dashboard_file)) {
+                require_once $dashboard_file;
             }
         }
         

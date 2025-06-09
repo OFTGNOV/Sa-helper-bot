@@ -142,13 +142,38 @@ class SA_Helper_Chatbot_Admin {
             array($this, 'gemini_api_key_callback'),
             'sa_helper_chatbot_options',
             'sa_helper_chatbot_api_section'
-        );
-
-        // Add Gemini model selection field
+        );        // Add Gemini model selection field
         add_settings_field(
             'gemini_model',
             'Gemini Model',
             array($this, 'gemini_model_callback'),
+            'sa_helper_chatbot_options',
+            'sa_helper_chatbot_api_section'
+        );
+
+        // Add page content inclusion toggle
+        add_settings_field(
+            'include_page_content',
+            'Include Page Content',
+            array($this, 'include_page_content_callback'),
+            'sa_helper_chatbot_options',
+            'sa_helper_chatbot_api_section'
+        );
+
+        // Add temperature setting
+        add_settings_field(
+            'api_temperature',
+            'AI Temperature',
+            array($this, 'api_temperature_callback'),
+            'sa_helper_chatbot_options',
+            'sa_helper_chatbot_api_section'
+        );
+
+        // Add max tokens setting
+        add_settings_field(
+            'max_tokens',
+            'Max Response Length',
+            array($this, 'max_tokens_callback'),
             'sa_helper_chatbot_options',
             'sa_helper_chatbot_api_section'
         );
@@ -238,9 +263,7 @@ class SA_Helper_Chatbot_Admin {
         if (!empty($api_key)) {
             echo '<span class="description" style="margin-left:10px;">✓ API key is set</span>';
         }
-    }
-
-    /**
+    }    /**
      * Gemini model selection callback
      */
     public function gemini_model_callback() {
@@ -262,20 +285,50 @@ class SA_Helper_Chatbot_Admin {
     }
 
     /**
+     * Include page content callback
+     */
+    public function include_page_content_callback() {
+        $options = get_option('sa_helper_chatbot_options', array());
+        $include_page_content = isset($options['gemini_api']['include_page_content']) ? $options['gemini_api']['include_page_content'] : true;
+        echo '<input type="checkbox" name="sa_helper_chatbot_options[gemini_api][include_page_content]" value="1" ' . checked($include_page_content, true, false) . ' />';
+        echo '<span class="description">Include the current page content to help provide more relevant answers</span>';
+    }
+
+    /**
+     * API temperature callback
+     */
+    public function api_temperature_callback() {
+        $options = get_option('sa_helper_chatbot_options', array());
+        $temperature = isset($options['gemini_api']['temperature']) ? $options['gemini_api']['temperature'] : 0.7;
+        echo '<input type="number" name="sa_helper_chatbot_options[gemini_api][temperature]" value="' . esc_attr($temperature) . '" min="0" max="2" step="0.1" />';
+        echo '<span class="description">Controls randomness (0.0 = very focused, 2.0 = very creative)</span>';
+    }
+
+    /**
+     * Max tokens callback
+     */
+    public function max_tokens_callback() {
+        $options = get_option('sa_helper_chatbot_options', array());
+        $max_tokens = isset($options['gemini_api']['max_tokens']) ? $options['gemini_api']['max_tokens'] : 800;
+        echo '<input type="number" name="sa_helper_chatbot_options[gemini_api][max_tokens]" value="' . esc_attr($max_tokens) . '" min="100" max="2048" step="50" />';
+        echo '<span class="description">Maximum length of AI responses (100-2048 tokens)</span>';
+    }
+
+    /**
      * Display the knowledge base editor
      */
-    public function display_knowledge_base_editor() {
-        $knowledge = get_option('sa_helper_chatbot_knowledge', array(
+    public function display_knowledge_base_editor() {        $knowledge = get_option('sa_helper_chatbot_knowledge', array(
             'company_info' => '',
             'website_navigation' => '',
-            'recent_news' => ''
+            'recent_news' => '',
+            'faq' => ''
         ));
         ?>
-        <div class="sa-helper-knowledge-tabs">
-            <div class="nav-tab-wrapper">
+        <div class="sa-helper-knowledge-tabs">            <div class="nav-tab-wrapper">
                 <a href="#company-info" class="nav-tab nav-tab-active">Company Information</a>
                 <a href="#website-navigation" class="nav-tab">Website Navigation</a>
                 <a href="#recent-news" class="nav-tab">Recent News</a>
+                <a href="#faq" class="nav-tab">FAQ</a>
             </div>
 
             <div id="company-info" class="tab-content active">
@@ -308,9 +361,7 @@ class SA_Helper_Chatbot_Admin {
                     )
                 );
                 ?>
-            </div>
-
-            <div id="recent-news" class="tab-content">
+            </div>            <div id="recent-news" class="tab-content">
                 <h3>Recent News</h3>
                 <p>Add recent news, updates, or announcements.</p>
                 <?php 
@@ -319,6 +370,22 @@ class SA_Helper_Chatbot_Admin {
                     'sa_helper_chatbot_knowledge_recent_news',
                     array(
                         'textarea_name' => 'sa_helper_chatbot_knowledge[recent_news]',
+                        'textarea_rows' => 10,
+                        'media_buttons' => false
+                    )
+                );
+                ?>
+            </div>
+
+            <div id="faq" class="tab-content">
+                <h3>Frequently Asked Questions (FAQ)</h3>
+                <p>Add commonly asked questions and their answers. This helps the chatbot provide accurate and comprehensive responses to user inquiries.</p>
+                <?php 
+                wp_editor(
+                    $knowledge['faq'], 
+                    'sa_helper_chatbot_knowledge_faq',
+                    array(
+                        'textarea_name' => 'sa_helper_chatbot_knowledge[faq]',
                         'textarea_rows' => 10,
                         'media_buttons' => false
                     )
