@@ -7,12 +7,11 @@
     // Conversation persistence across pages
     let conversationHistory = [];
     const STORAGE_KEY = 'sa_helper_chatbot_conversation';
-    const MAX_HISTORY_ITEMS = 20;
-
-    $(document).ready(function() {
+    const MAX_HISTORY_ITEMS = 20;    $(document).ready(function() {
         // Initialize conversation history from localStorage
         loadConversationHistory();
-          // Toggle chatbot popup
+        
+        // Toggle chatbot popup
         $('.sa-helper-chatbot-button').on('click keydown', function(e) {
             // Handle both click and Enter/Space key presses
             if (e.type === 'click' || (e.type === 'keydown' && (e.which === 13 || e.which === 32))) {
@@ -34,10 +33,11 @@
                 // Load conversation history when chat opens
                 if (!$(this).hasClass('history-loaded')) {
                     loadConversationIntoChat();
-                    $(this).addClass('history-loaded');
-                }
+                    $(this).addClass('history-loaded');                }
             }
-        });        // Close chatbot popup
+        });
+        
+        // Close chatbot popup
         $('.sa-helper-chatbot-close').on('click keydown', function(e) {
             // Handle both click and Enter/Space key presses
             if (e.type === 'click' || (e.type === 'keydown' && (e.which === 13 || e.which === 32))) {
@@ -51,12 +51,12 @@
                     $('.sa-helper-chatbot-button').focus();
                 }, 350);
             }
-        });
-
-        // Send message when clicking the send button
+        });        // Send message when clicking the send button
         $('.sa-helper-chatbot-send').on('click', function() {
             sendMessage();
-        });        // Send message when pressing Enter
+        });
+        
+        // Send message when pressing Enter
         $('.sa-helper-chatbot-input').on('keypress', function(e) {
             if (e.which === 13 && !e.shiftKey) { // Enter key (not Shift+Enter)
                 e.preventDefault();

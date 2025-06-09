@@ -18,11 +18,10 @@ class SA_Helper_Chatbot_Admin {
      */
     public function enqueue_scripts() {
         wp_enqueue_script('sa-helper-chatbot-admin', SA_HELPER_URL . 'assets/js/sa-helper-chatbot-admin.js', array('jquery'), SA_HELPER_VERSION, false);
-    }
-
-    /**
+    }    /**
      * Add the options page to the admin menu
-     */    public function add_menu_page() {
+     */
+    public function add_menu_page() {
         add_menu_page(
             'SA Helper Chatbot Settings', 
             'SA Helper Bot', 
@@ -68,14 +67,13 @@ class SA_Helper_Chatbot_Admin {
                 </div>
                 
                 <?php submit_button(); ?>
-            </form>
-        </div>
+            </form>        </div>
         <?php
     }
 
     /**
      * Register settings
-     */   
+     */
     public function register_settings() {
         // Register each setting only once
         register_setting('sa_helper_chatbot_options', 'sa_helper_chatbot_options', array(
@@ -313,11 +311,11 @@ class SA_Helper_Chatbot_Admin {
         echo '<input type="number" name="sa_helper_chatbot_options[gemini_api][max_tokens]" value="' . esc_attr($max_tokens) . '" min="100" max="2048" step="50" />';
         echo '<span class="description">Maximum length of AI responses (100-2048 tokens)</span>';
     }
-
+        
     /**
      * Display the knowledge base editor
      */
-    public function display_knowledge_base_editor() {        $knowledge = get_option('sa_helper_chatbot_knowledge', array(
+    public function display_knowledge_base_editor() {$knowledge = get_option('sa_helper_chatbot_knowledge', array(
             'company_info' => '',
             'website_navigation' => '',
             'recent_news' => '',

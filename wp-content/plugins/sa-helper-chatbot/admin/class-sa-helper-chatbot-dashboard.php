@@ -61,19 +61,17 @@ class SA_Helper_Chatbot_Dashboard {
                 <div class="sa-helper-stat-box">
                     <div class="sa-helper-stat-number"><?php echo esc_html($total_feedback); ?></div>
                     <div class="sa-helper-stat-label">Total Feedback</div>
-                </div>
-                <div class="sa-helper-stat-box">
-                    <div class="sa-helper-stat-number"><?php echo $api_configured ? '✓' : '✗'; ?></div>
+                </div>                <div class="sa-helper-stat-box">
+                    <div class="sa-helper-stat-number"><?php echo esc_html($api_configured ? '✓' : '✗'); ?></div>
                     <div class="sa-helper-stat-label">AI Status</div>
                 </div>
             </div>
-            
-            <?php if ($total_feedback > 0): ?>
+              <?php if ($total_feedback > 0): ?>
                 <div class="sa-helper-feedback-breakdown">
                     <h4>Feedback Breakdown</h4>
                     <div class="sa-helper-feedback-bar">
-                        <div class="sa-helper-positive" style="width: <?php echo ($positive_feedback / $total_feedback) * 100; ?>%"></div>
-                        <div class="sa-helper-negative" style="width: <?php echo ($negative_feedback / $total_feedback) * 100; ?>%"></div>
+                        <div class="sa-helper-positive" style="width: <?php echo esc_attr(($positive_feedback / $total_feedback) * 100); ?>%"></div>
+                        <div class="sa-helper-negative" style="width: <?php echo esc_attr(($negative_feedback / $total_feedback) * 100); ?>%"></div>
                     </div>
                     <div class="sa-helper-feedback-labels">
                         <span class="positive">👍 <?php echo esc_html($positive_feedback); ?></span>

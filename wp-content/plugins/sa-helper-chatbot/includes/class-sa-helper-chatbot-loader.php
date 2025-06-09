@@ -4,6 +4,12 @@
  *
  * @package    SA_Helper_Chatbot
  */
+
+// If this file is called directly, abort.
+if (!defined('WPINC')) {
+    die;
+}
+
 class SA_Helper_Chatbot_Loader {
 
     /**

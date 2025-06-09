@@ -76,8 +76,7 @@
     border: 1px solid #ddd;
     border-radius: 3px;
     min-height: 100px;
-    max-height: 400px;
-    overflow-y: auto;
+    max-height: 400px;    overflow-y: auto;
     font-family: monospace;
     white-space: pre-wrap;
 }
