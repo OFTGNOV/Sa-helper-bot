@@ -228,7 +228,7 @@ class SA_Helper_Chatbot_Admin {
      */
     public function welcome_message_field_callback() {
         $options = get_option('sa_helper_chatbot_options', array());
-        $message = isset($options['general']['welcome_message']) ? $options['general']['welcome_message'] : 'Hello! How can I help you today?';
+        $message = isset($options['general']['welcome_message']) ? $options['general']['welcome_message'] : '**Hello!** How can I help you today? 😊';
         echo '<textarea name="sa_helper_chatbot_options[general][welcome_message]" rows="3" cols="50">' . esc_textarea($message) . '</textarea>';
     }
 

@@ -95,7 +95,9 @@ class SA_Helper_Chatbot_AI
         }
         
         $this->session_data = &$_SESSION['sa_helper_chatbot'];
-    }    /**
+    }    
+    
+    /**
      * Get a response based on the user's message
      *
      * @param string $message The user's message
@@ -164,7 +166,9 @@ class SA_Helper_Chatbot_AI
         do_action('sa_helper_chatbot_after_fallback_response', $fallback_response, $message);
         
         return $fallback_response;
-    }    /**
+    }    
+    
+    /**
      * Check if Gemini API is properly configured
      *
      * @return bool True if API is configured, false otherwise
@@ -258,9 +262,7 @@ class SA_Helper_Chatbot_AI
             error_log('SA Helper Bot: Exception in Gemini API call: ' . $e->getMessage());
             return 'GEMINI_FAILURE';
         }
-    }
-
-    /**
+    }    /**
      * Build enhanced message with context for Gemini
      *
      * @param string $message User's message
@@ -269,19 +271,8 @@ class SA_Helper_Chatbot_AI
      */
     private function build_enhanced_message($message, $page_content = '')
     {
-        $context_parts = array();
+        $context_parts = array(); // Initialize the context parts array
         
-        // Add knowledge base context
-        if (!empty($this->knowledge)) {
-            foreach ($this->knowledge as $section => $content) {
-                if (!empty(trim($content))) {
-                    $section_name = ucwords(str_replace('_', ' ', $section));
-                    $context_parts[] = "=== {$section_name} ===\n" . trim($content);
-                }
-            }
-        }
-        
-        // Add page content if available and enabled
         if (!empty(trim($page_content)) && 
             isset($this->api_settings['include_page_content']) && 
             $this->api_settings['include_page_content']) {
@@ -291,11 +282,18 @@ class SA_Helper_Chatbot_AI
             if (!empty($cleaned_content)) {
                 $context_parts[] = "=== Current Page Content ===\n" . $cleaned_content;
             }
-        }
-        
-        // Build the complete message
+        }        // Build the complete message
         $enhanced_message = "You are a helpful assistant for this website. ";
         $enhanced_message .= "Please provide accurate, helpful, and concise responses based on the available information.\n\n";
+        $enhanced_message .= "CRITICAL: You MUST format your responses using Markdown syntax. Examples:\n";
+        $enhanced_message .= "- Use **text** for bold/important information\n";
+        $enhanced_message .= "- Use *text* for emphasis/italics\n";
+        $enhanced_message .= "- Use `code` for inline code or technical terms\n";
+        $enhanced_message .= "- Use ## Header for main headings, ### Subheader for subheadings\n";
+        $enhanced_message .= "- Use - item or 1. item for lists\n";
+        $enhanced_message .= "- Use > text for quotes or important notes\n";
+        $enhanced_message .= "- Use [link text](url) for links\n";
+        $enhanced_message .= "Always include some Markdown formatting in your response (at least bold text).\n\n";
         
         if (!empty($context_parts)) {
             $enhanced_message .= "Available Information:\n" . implode("\n\n", $context_parts) . "\n\n";
@@ -362,9 +360,10 @@ class SA_Helper_Chatbot_AI
             $this->session_data['conversation_history'] = array();
         }
         
+        // Store raw response to preserve Markdown for client-side rendering
         $this->session_data['conversation_history'][] = array(
             'type' => 'bot',
-            'message' => sanitize_text_field($response),
+            'message' => $response, // Removed sanitize_text_field to preserve Markdown
             'timestamp' => current_time('timestamp')
         );
         
@@ -444,18 +443,17 @@ class SA_Helper_Chatbot_AI
                 }
             }
         }
-        
-        // Check page content if available
+          // Check page content if available
         if (!empty(trim($page_content))) {
-            return "I can see you're asking about something on this page. While I don't have specific information about your question in my knowledge base, you might find the answer in the content on this page. Is there something specific you'd like to know about our services?";
+            return "I can see you're asking about something on this page. While I don't have specific information about your question in my knowledge base, you might find the answer in the content on this page. **Is there something specific you'd like to know about our services?**";
         }
         
-        // Generic fallback responses
+        // Generic fallback responses with Markdown formatting
         $fallback_responses = array(
-            "I'd be happy to help! Could you please provide more details about what you're looking for?",
-            "That's a great question! While I don't have specific information about that topic, please feel free to browse our website or contact us directly for more details.",
-            "Thanks for reaching out! I'm here to help with information about our services. Could you be more specific about what you need assistance with?",
-            "I want to make sure I give you the most accurate information. Could you rephrase your question or provide more context?",
+            "I'd be **happy to help!** Could you please provide more details about what you're looking for?",
+            "That's a great question! While I don't have specific information about that topic, please feel free to browse our website or *contact us directly* for more details.",
+            "Thanks for reaching out! I'm here to help with information about our services. **Could you be more specific** about what you need assistance with?",
+            "I want to make sure I give you the most **accurate information**. Could you rephrase your question or provide more context?",
         );
         
         return $fallback_responses[array_rand($fallback_responses)];

@@ -35,7 +35,7 @@ function sa_helper_chatbot_activate() {
         'general' => array(
             'enable' => true,
             'title' => 'Helper Bot',
-            'welcome_message' => 'Hello! How can I help you today?'
+            'welcome_message' => '**Hello!** How can I help you today? 😊'
         ),
         'gemini_api' => array(
             'enable' => false,

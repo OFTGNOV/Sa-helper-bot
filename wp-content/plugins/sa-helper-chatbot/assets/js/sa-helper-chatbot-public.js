@@ -7,11 +7,20 @@
     // Conversation persistence across pages using sessionStorage
     let conversationHistory = [];
     const STORAGE_KEY = 'sa_helper_chatbot_session_conversation';
-    const MAX_HISTORY_ITEMS = 20;
-
-    $(document).ready(function() {
-        // Initialize conversation history from sessionStorage
+    const MAX_HISTORY_ITEMS = 20;    $(document).ready(function() {
+        // Debug: Check if marked is available on page load
+        console.log('SA Helper Bot: marked library available:', typeof marked !== 'undefined');
+        if (typeof marked !== 'undefined') {
+            console.log('SA Helper Bot: marked version:', marked.version || 'unknown');
+            console.log('SA Helper Bot: marked parse function:', typeof marked.parse);
+        } else {
+            console.error('SA Helper Bot: marked.js library not loaded! Check if marked.min.js is being loaded properly.');
+        }
+          // Initialize conversation history from sessionStorage
         loadConversationHistory();
+        
+        // Parse welcome message for Markdown
+        initializeWelcomeMessage();
         
         // Toggle chatbot popup
         $('.sa-helper-chatbot-button').on('click keydown', function(e) {
@@ -140,12 +149,46 @@
                     scrollToBottom();
                 }
             });
-        }
-        
-        // Function to add a message to the chat
+        }        // Function to add a message to the chat
         function addMessage(sender, message) {
             const $messages = $('.sa-helper-chatbot-messages');
-            const $message = $('<div>').addClass('sa-helper-chatbot-message').addClass(sender).text(message);
+            let formattedMessage = message;
+            
+            // Debug: Check if marked is available
+            if (typeof marked === 'undefined') {
+                console.warn('SA Helper Bot: marked.js library not available for Markdown rendering');
+            } else {
+                console.log('SA Helper Bot: marked.js is available, version:', marked.version || 'unknown');
+            }
+            
+            if (sender === 'bot' && typeof marked !== 'undefined') {
+                try {
+                    // Configure marked options for better security and formatting
+                    if (marked.setOptions) {
+                        marked.setOptions({
+                            breaks: true,
+                            sanitize: false, // We'll handle sanitization ourselves
+                            smartLists: true,
+                            smartypants: true
+                        });
+                    }
+                    
+                    formattedMessage = marked.parse(message);
+                    console.log('SA Helper Bot: Successfully parsed Markdown for message:', message.substring(0, 50) + '...');
+                } catch (e) {
+                    console.error('SA Helper Bot: Markdown parsing failed:', e);
+                    formattedMessage = message; // Fallback to original message
+                }
+            }
+            
+            const $message = $('<div>').addClass('sa-helper-chatbot-message').addClass(sender);
+
+            if (sender === 'bot') {
+                $message.html(formattedMessage); // Use .html() for parsed Markdown
+            } else {
+                $message.text(formattedMessage); // Use .text() for user messages to prevent XSS from user input
+            }
+            
             $messages.append($message);
             
             // Force scroll to bottom after a short delay to ensure DOM is updated
@@ -327,9 +370,7 @@
                 page_title: document.title
             });
             saveConversationHistory();
-        }
-
-        function loadConversationIntoChat() {
+        }        function loadConversationIntoChat() {
             const $messages = $('.sa-helper-chatbot-messages');
             
             // Clear existing messages except welcome message
@@ -340,8 +381,29 @@
                 const $message = $('<div>')
                     .addClass('sa-helper-chatbot-message')
                     .addClass(item.sender)
-                    .addClass('history-message')
-                    .text(item.message);
+                    .addClass('history-message');
+                  // Apply Markdown rendering for bot messages in history
+                let messageContent = item.message;
+                if (item.sender === 'bot' && typeof marked !== 'undefined') {
+                    try {
+                        // Configure marked options for consistency
+                        if (marked.setOptions) {
+                            marked.setOptions({
+                                breaks: true,
+                                sanitize: false,
+                                smartLists: true,
+                                smartypants: true
+                            });
+                        }
+                        messageContent = marked.parse(item.message);
+                        $message.html(messageContent);
+                    } catch (e) {
+                        console.warn('SA Helper Bot: Markdown parsing failed for history message:', e);
+                        $message.text(item.message);
+                    }
+                } else {
+                    $message.text(item.message);
+                }
                 
                 // Add page context for messages from other pages
                 if (item.page_url !== window.location.href && item.page_title) {
