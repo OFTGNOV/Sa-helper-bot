@@ -3,10 +3,10 @@
  * Plugin Name: SA Helper Chatbot
  * Plugin URI: 
  * Description: A custom AI chatbot that provides information about our company, website navigation, and recent news. Features enhanced Gemini API integration with intelligent fallback methods and conversation persistence.
- * Version: 2.0.1
+ * Version: 1.0.0
  * Update Message: Minor bug fixes and changes to CSS.
- * Author: 
- * Author URI: 
+ * Author: Tamai Richards
+ * Author URI: https://oftgnov.github.io/Tamai.com/
  * Text Domain: sa-helper-chatbot
  * Domain Path: /languages
  * Requires at least: 5.0
@@ -21,7 +21,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('SA_HELPER_VERSION', '2.0.1');
+define('SA_HELPER_VERSION', '1.0.0');
 define('SA_HELPER_PATH', plugin_dir_path(__FILE__));
 define('SA_HELPER_URL', plugin_dir_url(__FILE__));
 define('SA_HELPER_BASENAME', plugin_basename(__FILE__));

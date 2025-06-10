@@ -167,8 +167,7 @@ class SA_Helper_Chatbot_Public {
         if (count($feedbacks) > 100) {
             $feedbacks = array_slice($feedbacks, -100);
         }
-        
-        update_option('sa_helper_chatbot_feedback', $feedbacks);
+          update_option('sa_helper_chatbot_feedback', $feedbacks);
         
         wp_send_json_success('Feedback recorded');
     }

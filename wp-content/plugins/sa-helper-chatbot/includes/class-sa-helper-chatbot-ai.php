@@ -533,6 +533,10 @@ class SA_Helper_Chatbot_AI
     public function clear_conversation_history()
     {
         $this->session_data['conversation_history'] = array();
+        
+        // Also reset session metadata
+        $this->session_data['session_id'] = uniqid('sa_chat_', true);
+        $this->session_data['started_at'] = time();
     }
 
     /**

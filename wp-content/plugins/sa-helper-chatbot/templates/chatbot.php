@@ -17,8 +17,11 @@ if (!defined('WPINC')) {
     
     <div class="sa-helper-chatbot-popup" role="dialog" aria-labelledby="chatbot-title" aria-hidden="true">
         <div class="sa-helper-chatbot-header">
-            <div class="sa-helper-chatbot-title" id="chatbot-title"><?php echo esc_html($title); ?></div>
-            <div class="sa-helper-chatbot-close" role="button" aria-label="Close chat" tabindex="0">&times;</div>
+            <div class="sa-helper-chatbot-title" id="chatbot-title">
+                <?php echo esc_html($title); ?>
+            </div>            <div class="sa-helper-chatbot-header-actions">
+                <div class="sa-helper-chatbot-close" role="button" aria-label="Close chat" tabindex="0">&times;</div>
+            </div>
         </div>
           <div class="sa-helper-chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages">
             <div class="sa-helper-chatbot-message bot welcome-message">

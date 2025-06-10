@@ -52,11 +52,12 @@
                 $('.sa-helper-chatbot-popup').attr('aria-hidden', true);
                 
                 // Return focus to chat button
-                setTimeout(() => {
-                    $('.sa-helper-chatbot-button').focus();
+                setTimeout(() => {                $('.sa-helper-chatbot-button').focus();
                 }, 350);
             }
-        });        // Send message when clicking the send button
+        });
+
+        // Send message when clicking the send button
         $('.sa-helper-chatbot-send').on('click', function() {
             sendMessage();
         });
@@ -350,41 +351,33 @@
                 
                 $messages.append($message);
             });
-            
-            // Ensure scroll to bottom after loading history
+              // Ensure scroll to bottom after loading history
             setTimeout(() => {
                 scrollToBottom();
             }, 100);
         }
-
-        // Clear conversation history function (can be called externally)
-        window.saHelperClearHistory = function() {
-            conversationHistory = [];
-            sessionStorage.removeItem(STORAGE_KEY);
-            $('.sa-helper-chatbot-messages').find('.history-message').remove();
-        };
     });
 
-        // Function to apply theme-specific styling
-        function applyThemeSpecificStyling() {
-            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-            const $input = $('.sa-helper-chatbot-input');
-            
-            if (isDarkMode) {
-                $input.css('color', '#e0e0e0');
-            } else {
-                $input.css('color', '#333333');
-            }
+    // Function to apply theme-specific styling
+    function applyThemeSpecificStyling() {
+        const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const $input = $('.sa-helper-chatbot-input');
+        
+        if (isDarkMode) {
+            $input.css('color', '#e0e0e0');
+        } else {
+            $input.css('color', '#333333');
         }
+    }
 
-        // Listen for theme changes
-        if (window.matchMedia) {
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
-                applyThemeSpecificStyling();
-            });
-        }
+    // Listen for theme changes
+    if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+            applyThemeSpecificStyling();
+        });
+    }
 
-        // Apply initial styling on page load
-        applyThemeSpecificStyling();
+    // Apply initial styling on page load
+    applyThemeSpecificStyling();
 
 })(jQuery);
