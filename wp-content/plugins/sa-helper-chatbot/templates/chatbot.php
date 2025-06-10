@@ -21,7 +21,7 @@ if (!defined('WPINC')) {
             <div class="sa-helper-chatbot-close" role="button" aria-label="Close chat" tabindex="0">&times;</div>
         </div>
           <div class="sa-helper-chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages">
-            <div class="sa-helper-chatbot-message bot">
+            <div class="sa-helper-chatbot-message bot welcome-message">
                 <?php echo esc_html($welcome_message); ?>
             </div>
         </div>

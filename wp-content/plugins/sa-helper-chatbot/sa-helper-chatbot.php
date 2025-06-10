@@ -3,7 +3,8 @@
  * Plugin Name: SA Helper Chatbot
  * Plugin URI: 
  * Description: A custom AI chatbot that provides information about our company, website navigation, and recent news. Features enhanced Gemini API integration with intelligent fallback methods and conversation persistence.
- * Version: 2.0.0
+ * Version: 2.0.1
+ * Update Message: Minor bug fixes and changes to CSS.
  * Author: 
  * Author URI: 
  * Text Domain: sa-helper-chatbot
@@ -20,7 +21,7 @@ if (!defined('WPINC')) {
 }
 
 // Define plugin constants
-define('SA_HELPER_VERSION', '2.0.0');
+define('SA_HELPER_VERSION', '2.0.1');
 define('SA_HELPER_PATH', plugin_dir_path(__FILE__));
 define('SA_HELPER_URL', plugin_dir_url(__FILE__));
 define('SA_HELPER_BASENAME', plugin_basename(__FILE__));
@@ -34,7 +35,7 @@ function sa_helper_chatbot_activate() {
         'general' => array(
             'enable' => true,
             'title' => 'Helper Bot',
-            'welcome_message' => 'Hi there! How can I help you today?'
+            'welcome_message' => 'Hello! How can I help you today?'
         ),
         'gemini_api' => array(
             'enable' => false,

@@ -49,11 +49,12 @@ $prompt = [
 - **Temperature Control**: Configurable AI creativity levels
 
 ### 💾 **Conversation Management**
-- **Cross-Page Persistence**: Conversations continue across site navigation
-- **localStorage Integration**: Client-side conversation history storage
+- **Cross-Page Persistence**: Conversations continue across site navigation within the same browser session
+- **sessionStorage Integration**: Client-side conversation history storage that persists until browser tab is closed
 - **Session Statistics**: Track user engagement and conversation metrics
 - **History Limits**: Configurable conversation length (default: 20 messages)
 - **Clear History**: User and admin controls for conversation reset
+- **Cross-Page Context**: Messages from other pages are visually distinguished with page context
 
 ### 📚 **Knowledge Base System**
 ```php
@@ -249,13 +250,15 @@ class SA_Helper_Chatbot_Admin {
 
 #### Session Structure
 ```php
-$_SESSION['sa_helper_chatbot'] = [
-    'session_id' => 'unique-session-identifier',
-    'started_at' => timestamp,
-    'conversation_history' => [
-        ['type' => 'user', 'message' => '...', 'timestamp' => ...],
-        ['type' => 'bot', 'message' => '...', 'timestamp' => ...]
-    ]
+// sessionStorage structure
+sessionStorage['sa_helper_chatbot_session_conversation'] = [
+    {
+        'sender' => 'user|bot',
+        'message' => 'message content',
+        'timestamp' => timestamp,
+        'page_url' => 'current page URL',
+        'page_title' => 'current page title'
+    }
 ];
 ```
 
@@ -437,7 +440,7 @@ Bot: "Here are our latest updates: [recent news]..."
 
 #### Conversation History Not Persisting
 **Symptoms**: History lost on page refresh
-- **Check**: Browser localStorage is enabled
+- **Check**: Browser sessionStorage is enabled
 - **Check**: No JavaScript errors preventing storage
 - **Check**: Session management is working
 - **Solution**: Clear browser data, test in different browser

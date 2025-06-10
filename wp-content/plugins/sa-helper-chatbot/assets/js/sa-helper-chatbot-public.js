@@ -4,11 +4,13 @@
 (function($) {
     'use strict';
 
-    // Conversation persistence across pages
+    // Conversation persistence across pages using sessionStorage
     let conversationHistory = [];
-    const STORAGE_KEY = 'sa_helper_chatbot_conversation';
-    const MAX_HISTORY_ITEMS = 20;    $(document).ready(function() {
-        // Initialize conversation history from localStorage
+    const STORAGE_KEY = 'sa_helper_chatbot_session_conversation';
+    const MAX_HISTORY_ITEMS = 20;
+
+    $(document).ready(function() {
+        // Initialize conversation history from sessionStorage
         loadConversationHistory();
         
         // Toggle chatbot popup
@@ -27,13 +29,16 @@
                 if (isOpen) {
                     setTimeout(() => {
                         $('.sa-helper-chatbot-input').focus();
+                        // Ensure proper styling is applied based on theme
+                        applyThemeSpecificStyling();
                     }, 350);
                 }
                 
                 // Load conversation history when chat opens
                 if (!$(this).hasClass('history-loaded')) {
                     loadConversationIntoChat();
-                    $(this).addClass('history-loaded');                }
+                    $(this).addClass('history-loaded');
+                }
             }
         });
         
@@ -284,14 +289,15 @@
         // Conversation history management
         function loadConversationHistory() {
             try {
-                const stored = localStorage.getItem(STORAGE_KEY);
+                const stored = sessionStorage.getItem(STORAGE_KEY);
                 if (stored) {
                     conversationHistory = JSON.parse(stored);
-                    // Clean old conversations (older than 24 hours)
-                    const cutoffTime = Date.now() - (24 * 60 * 60 * 1000);
-                    conversationHistory = conversationHistory.filter(item => 
-                        item.timestamp > cutoffTime
-                    );
+                    // Keep all conversation history within session (no time-based cleanup)
+                    // Only limit by message count for performance
+                    if (conversationHistory.length > MAX_HISTORY_ITEMS) {
+                        conversationHistory = conversationHistory.slice(-MAX_HISTORY_ITEMS);
+                        saveConversationHistory();
+                    }
                 }
             } catch (e) {
                 console.error("Error loading conversation history:", e);
@@ -305,7 +311,7 @@
                 if (conversationHistory.length > MAX_HISTORY_ITEMS) {
                     conversationHistory = conversationHistory.slice(-MAX_HISTORY_ITEMS);
                 }
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(conversationHistory));
+                sessionStorage.setItem(STORAGE_KEY, JSON.stringify(conversationHistory));
             } catch (e) {
                 console.error("Error saving conversation history:", e);
             }
@@ -316,7 +322,8 @@
                 sender: sender,
                 message: message,
                 timestamp: Date.now(),
-                page_url: window.location.href
+                page_url: window.location.href,
+                page_title: document.title
             });
             saveConversationHistory();
         }
@@ -327,17 +334,21 @@
             // Clear existing messages except welcome message
             $messages.find('.sa-helper-chatbot-message:not(.welcome-message)').remove();
             
-            // Add conversation history to chat
+            // Add ALL conversation history to chat (not just current page)
             conversationHistory.forEach(item => {
-                if (item.page_url === window.location.href) {
-                    // Only show messages from current page
-                    const $message = $('<div>')
-                        .addClass('sa-helper-chatbot-message')
-                        .addClass(item.sender)
-                        .addClass('history-message')
-                        .text(item.message);
-                    $messages.append($message);
+                const $message = $('<div>')
+                    .addClass('sa-helper-chatbot-message')
+                    .addClass(item.sender)
+                    .addClass('history-message')
+                    .text(item.message);
+                
+                // Add page context for messages from other pages
+                if (item.page_url !== window.location.href && item.page_title) {
+                    $message.attr('title', `From: ${item.page_title}`);
+                    $message.addClass('cross-page-message');
                 }
+                
+                $messages.append($message);
             });
             
             // Ensure scroll to bottom after loading history
@@ -349,9 +360,31 @@
         // Clear conversation history function (can be called externally)
         window.saHelperClearHistory = function() {
             conversationHistory = [];
-            localStorage.removeItem(STORAGE_KEY);
+            sessionStorage.removeItem(STORAGE_KEY);
             $('.sa-helper-chatbot-messages').find('.history-message').remove();
         };
     });
+
+        // Function to apply theme-specific styling
+        function applyThemeSpecificStyling() {
+            const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const $input = $('.sa-helper-chatbot-input');
+            
+            if (isDarkMode) {
+                $input.css('color', '#e0e0e0');
+            } else {
+                $input.css('color', '#333333');
+            }
+        }
+
+        // Listen for theme changes
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(e) {
+                applyThemeSpecificStyling();
+            });
+        }
+
+        // Apply initial styling on page load
+        applyThemeSpecificStyling();
 
 })(jQuery);
