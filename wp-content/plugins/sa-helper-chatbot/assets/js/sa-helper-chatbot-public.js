@@ -26,6 +26,9 @@
         
         // Bind event handlers
         bindEventHandlers();
+
+        // Apply initial styling on page load after DOM is ready
+        applyThemeSpecificStyling();
     });
     
     /**
@@ -39,7 +42,8 @@
         $chatClose = $('.sa-helper-chatbot-close');
         $chatSend = $('.sa-helper-chatbot-send');
     }
-      /**
+    
+    /**
      * Bind all event handlers in one place for better organization
      */
     function bindEventHandlers() {
@@ -198,7 +202,14 @@
      */
     function addMessage(sender, message) {
         const $message = $('<div>').addClass('sa-helper-chatbot-message').addClass(sender);
-        $message.text(message);
+        
+        if (sender === 'bot') {
+            $message.html(safeMarkdownRender(message));
+            $message.find('a[href^="http"]').attr('target', '_blank').attr('rel', 'noopener noreferrer');
+        } else {
+            $message.text(message);
+        }
+        
         $chatMessages.append($message);
         
         setTimeout(() => {
@@ -206,7 +217,46 @@
         }, SCROLL_DELAY);
         
         return $message;
-    }    /**
+    }
+
+    // Ensure marked.js and DOMPurify are loaded
+    if (typeof marked === 'undefined' || typeof DOMPurify === 'undefined') {
+        console.error('Markdown rendering libraries (marked.js or DOMPurify) are not loaded.');
+        return;
+    }
+
+    // Cache configuration for marked.js
+    if (!window.markedConfigured) {
+        marked.setOptions({
+            breaks: true,
+            gfm: true,
+            sanitize: false // We'll use DOMPurify instead
+        });
+        window.markedConfigured = true;
+    }
+
+    // Add fallback for Markdown rendering
+    function safeMarkdownRender(message) {
+        try {
+            if (typeof message !== 'string' || message.trim() === '') {
+                console.warn('Invalid markdown input:', message);
+                return message; // Fallback to plain text
+            }
+
+            const rawHtml = marked.parse(message);
+            const sanitizedHtml = DOMPurify.sanitize(rawHtml, {
+                ALLOWED_TAGS: ['p', 'strong', 'em', 'code', 'pre', 'ul', 'ol', 'li', 'a', 'br', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+                ALLOWED_ATTR: ['href', 'title', 'target'],
+                ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp):|[^a-z]|[a-z+\.\-]+(?:[^a-z+\.\-:]|$))/i
+            });
+
+            return sanitizedHtml;
+        } catch (e) {
+            console.error('Error rendering Markdown:', e);
+            return message; // Fallback to plain text
+        }
+    }
+    /**
      * Add feedback options
      */
     function addFeedbackOptions($messageElement, userMessage, botResponse) {
@@ -281,7 +331,7 @@
     /**
      * Enhanced page content extraction (memoized for performance)
      */
-    let cachedPageContent = null;
+    let cachedPageContent = null; // Initialize cachedPageContent here
     function getEnhancedPageContent() {
         if (cachedPageContent !== null) {
             return cachedPageContent;
@@ -389,43 +439,46 @@
     }    function loadConversationIntoChat() {
         // Clear existing messages except welcome message
         $chatMessages.find('.sa-helper-chatbot-message:not(.welcome-message)').remove();
-        
+
         // Batch DOM operations for performance
         const messagesHTML = conversationHistory.map(item => {
             const titleAttr = (item.page_url !== window.location.href && item.page_title) 
                 ? ` title="From: ${item.page_title}"` : '';
             const crossPageClass = (item.page_url !== window.location.href) 
                 ? ' cross-page-message' : '';
-            
             return `<div class="sa-helper-chatbot-message ${item.sender} history-message${crossPageClass}"${titleAttr}></div>`;
         }).join('');
-        
+
         $chatMessages.append(messagesHTML);
-        
-        // Add text content safely using jQuery text() method
+
+        // Add content safely with Markdown support for bot messages
         conversationHistory.forEach((item, index) => {
             const $messageElement = $chatMessages.find('.history-message').eq(index);
-            $messageElement.text(item.message);
+            if (item.sender === 'bot' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+                $messageElement.html(safeMarkdownRender(item.message));
+                $messageElement.find('a[href^="http"]').attr('target', '_blank').attr('rel', 'noopener noreferrer');
+            } else {
+                $messageElement.text(item.message);
+            }
         });
-        
+
         setTimeout(() => {
             scrollToBottom();
         }, 100);
-    }    /**
+    }/**
      * Theme-specific styling (optimized)
      */
     function applyThemeSpecificStyling() {
         const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         
-        $chatInput.css('color', isDarkMode ? '#e0e0e0' : '#333333');
+        if ($chatInput) { // Add a check for $chatInput
+            $chatInput.css('color', isDarkMode ? '#e0e0e0' : '#333333');
+        }
     }
 
     // Listen for theme changes
     if (window.matchMedia) {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyThemeSpecificStyling);
     }
-
-    // Apply initial styling on page load
-    applyThemeSpecificStyling();
 
 })(jQuery);

@@ -21,10 +21,9 @@ if (!defined('WPINC')) {
                 <?php echo esc_html($title); ?>
             </div>            <div class="sa-helper-chatbot-header-actions">
                 <div class="sa-helper-chatbot-close" role="button" aria-label="Close chat" tabindex="0">&times;</div>
-            </div>        </div>
-          <div class="sa-helper-chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages">
+            </div>        </div>          <div class="sa-helper-chatbot-messages" role="log" aria-live="polite" aria-label="Chat messages">
             <div class="sa-helper-chatbot-message bot welcome-message">
-                <?php echo esc_html($welcome_message); ?>
+                <?php echo $welcome_message; // Raw Markdown for welcome message ?>
             </div>
         </div>
         

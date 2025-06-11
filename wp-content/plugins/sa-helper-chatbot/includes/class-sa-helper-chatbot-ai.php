@@ -316,6 +316,14 @@ class SA_Helper_Chatbot_AI
         }        // Build the complete message
         $enhanced_message = "You are a helpful assistant for this website. ";
         $enhanced_message .= "Please provide accurate, helpful, and concise responses based on the available information.\n\n";
+        $enhanced_message .= "IMPORTANT: Format your responses using Markdown when appropriate to improve readability. ";
+        $enhanced_message .= "Use Markdown for:\n";
+        $enhanced_message .= "- **Bold text** for emphasis and important points\n";
+        $enhanced_message .= "- *Italic text* for subtle emphasis\n";
+        $enhanced_message .= "- `inline code` for technical terms, URLs, or code snippets\n";
+        $enhanced_message .= "- Lists (bulleted with - or numbered with 1.) for structured information\n";
+        $enhanced_message .= "- [Links](URL) when referencing external resources\n";
+        $enhanced_message .= "- Simple line breaks for better text organization\n\n";
         
         if (!empty($context_parts)) {
             $enhanced_message .= "Available Information:\n" . implode("\n\n", $context_parts) . "\n\n";
@@ -323,7 +331,8 @@ class SA_Helper_Chatbot_AI
         
         $enhanced_message .= "User Question: " . $message . "\n\n";
         $enhanced_message .= "Please provide a helpful response based on the available information. ";
-        $enhanced_message .= "If the information isn't available, please say so politely and suggest alternatives.";
+        $enhanced_message .= "If the information isn't available, please say so politely and suggest alternatives. ";
+        $enhanced_message .= "Remember to use appropriate Markdown formatting to make your response clear and easy to read.";
         
         return $enhanced_message;
     }
@@ -493,10 +502,10 @@ class SA_Helper_Chatbot_AI
         
         switch ($section) {
             case 'company_info':
-                $keywords = array('company', 'about', 'business', 'who', 'what', 'service', 'services');
+                $keywords = array('company', 'about', 'business', 'who', 'what', 'service', 'services', 'facebook', 'instagram', 'twitter', 'social media');
                 break;
             case 'website_navigation':
-                $keywords = array('navigate', 'navigation', 'menu', 'page', 'pages', 'find', 'where', 'how');
+                $keywords = array('navigate', 'navigation', 'menu', 'page', 'pages', 'find', 'where', 'how', 'go', 'link', 'links');
                 break;
             case 'recent_news':
                 $keywords = array('news', 'recent', 'update', 'updates', 'announcement', 'new');
@@ -625,19 +634,17 @@ class SA_Helper_Chatbot_AI
     public function clear_response_cache()
     {
         global $wpdb;
-        
+
         // Use WordPress API to safely clear transients with our prefix
-        $transients = $wpdb->get_col(
-            $wpdb->prepare(
-                "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
-                '_transient_sa_helper_response_%'
-            )
-        );
-        
-        foreach ($transients as $transient) {
-            $key = str_replace('_transient_', '', $transient);
-            delete_transient($key);
+        $transients = wp_cache_get('sa_helper_chatbot_transients');
+
+        if ($transients) {
+            foreach ($transients as $transient) {
+                wp_cache_delete($transient);
+            }
         }
+
+        wp_cache_set('sa_helper_chatbot_transients', []);
         
         // Clear other cached data using WordPress APIs
         delete_transient('sa_helper_api_settings');

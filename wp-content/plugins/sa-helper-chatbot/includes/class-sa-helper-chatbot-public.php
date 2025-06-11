@@ -33,22 +33,44 @@ class SA_Helper_Chatbot_Public {
         );
     }    /**
      * Register the JavaScript for the public-facing side of the site.
-     */
-    public function enqueue_scripts() {
+     */    public function enqueue_scripts() {
+        // Load DOMPurify for HTML sanitization
+        wp_enqueue_script(
+            'dompurify',
+            SA_HELPER_URL . 'assets/js/dompurify.min.js',
+            array(),
+            '2.3.3', // Assuming a version for DOMPurify, adjust if known
+            true
+        );
+
+        // Load Marked.js for Markdown parsing
+        wp_enqueue_script(
+            'marked',
+            SA_HELPER_URL . 'assets/js/marked.min.js',
+            array(),
+            '15.0.12', // Updated to use version from package.json
+            true
+        );
+
         // Load main chatbot script
         wp_enqueue_script(
-            'sa-helper-chatbot',
+            'sa-helper-chatbot-public',
             SA_HELPER_URL . 'assets/js/sa-helper-chatbot-public.js',
-            array('jquery'),
+            array('jquery', 'marked', 'dompurify'), // Ensure 'marked' and 'dompurify' are dependencies
             SA_HELPER_VERSION,
             true
         );
-        
+
         // Add the AJAX object for the JavaScript
-        wp_localize_script('sa-helper-chatbot', 'saHelperChatbot', array(
-            'ajax_url' => admin_url('admin-ajax.php'),
-            'nonce' => wp_create_nonce('sa-helper-chatbot-nonce')
-        ));
+        wp_localize_script(
+            'sa-helper-chatbot-public',
+            'saHelperChatbot',
+            array(
+                'ajax_url' => admin_url('admin-ajax.php'),
+                'nonce'    => wp_create_nonce('sa-helper-chatbot-nonce'),
+                'debug_mode' => defined('WP_DEBUG') && WP_DEBUG,
+            )
+        );
     }
 
     /**
