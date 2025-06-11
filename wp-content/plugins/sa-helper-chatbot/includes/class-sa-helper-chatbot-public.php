@@ -31,23 +31,15 @@ class SA_Helper_Chatbot_Public {
             array(),
             SA_HELPER_VERSION
         );
-    }
-
-    /**
+    }    /**
      * Register the JavaScript for the public-facing side of the site.
      */
     public function enqueue_scripts() {
-        wp_enqueue_script(
-            'marked',
-            SA_HELPER_URL . 'assets/js/marked.min.js',
-            array(),
-            SA_HELPER_VERSION,
-            true
-        );
+        // Load main chatbot script
         wp_enqueue_script(
             'sa-helper-chatbot',
             SA_HELPER_URL . 'assets/js/sa-helper-chatbot-public.js',
-            array('jquery', 'marked'), // Add 'marked' as a dependency
+            array('jquery'),
             SA_HELPER_VERSION,
             true
         );
@@ -69,10 +61,9 @@ class SA_Helper_Chatbot_Public {
         if (isset($options['general']['enable']) && $options['general']['enable'] === false) {
             return;
         }
-        
-        // Get chatbot settings with defaults
+          // Get chatbot settings with defaults
         $title = isset($options['general']['title']) ? $options['general']['title'] : 'Helper Bot';
-        $welcome_message = isset($options['general']['welcome_message']) ? $options['general']['welcome_message'] : '**Hello!** How can I help you today? 😊';
+        $welcome_message = isset($options['general']['welcome_message']) ? $options['general']['welcome_message'] : 'Hello! How can I help you today?';
         
         // Include the chatbot template
         include SA_HELPER_PATH . 'templates/chatbot.php';

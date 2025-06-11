@@ -7,6 +7,21 @@
 class SA_Helper_Chatbot_Admin {
 
     /**
+     * Cached options for performance
+     */
+    private $cached_options = null;
+    
+    /**
+     * Get options with caching
+     */
+    private function get_options() {
+        if ($this->cached_options === null) {
+            $this->cached_options = get_option('sa_helper_chatbot_options', array());
+        }
+        return $this->cached_options;
+    }
+
+    /**
      * Register the stylesheets for the admin area.
      */
     public function enqueue_styles() {

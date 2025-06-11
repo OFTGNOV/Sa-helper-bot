@@ -41,26 +41,43 @@ class SA_Helper_Chatbot_AI
         $this->load_knowledge_base();
         $this->load_api_settings();
         $this->init_session();
-    }
-
-    /**
-     * Load knowledge base from WordPress options
+    }    /**
+     * Load knowledge base from WordPress options (cached for performance)
      */
     private function load_knowledge_base()
     {
+        // Use WordPress object cache for performance
+        $cache_key = 'sa_helper_knowledge_base';
+        $cached_knowledge = wp_cache_get($cache_key, 'sa_helper_chatbot');
+        
+        if ($cached_knowledge !== false) {
+            $this->knowledge = $cached_knowledge;
+            return;
+        }
+        
         $this->knowledge = get_option('sa_helper_chatbot_knowledge', array(
             'company_info' => '',
             'website_navigation' => '',
             'recent_news' => '',
             'faq' => ''
         ));
-    }
-
-    /**
-     * Load API settings from WordPress options
+        
+        // Cache for 1 hour
+        wp_cache_set($cache_key, $this->knowledge, 'sa_helper_chatbot', 3600);
+    }    /**
+     * Load API settings from WordPress options (cached for performance)
      */
     private function load_api_settings()
     {
+        // Use transient cache for API settings
+        $cache_key = 'sa_helper_api_settings';
+        $cached_settings = get_transient($cache_key);
+        
+        if ($cached_settings !== false) {
+            $this->api_settings = $cached_settings;
+            return;
+        }
+        
         $options = get_option('sa_helper_chatbot_options', array());
         $this->api_settings = isset($options['gemini_api']) ? $options['gemini_api'] : array(
             'api_key' => '',
@@ -75,6 +92,9 @@ class SA_Helper_Chatbot_AI
         if (isset($this->api_settings['model'])) {
             $this->api_settings['model'] = $this->get_compatible_model_name($this->api_settings['model']);
         }
+        
+        // Cache for 30 minutes
+        set_transient($cache_key, $this->api_settings, 1800);
     }
 
     /**
@@ -180,10 +200,8 @@ class SA_Helper_Chatbot_AI
             $this->api_settings['enable'] == '1' &&
             !empty($this->api_settings['api_key'])
         );
-    }
-
-    /**
-     * Get response from Gemini API using simplified approach
+    }    /**
+     * Get response from Gemini API using simplified approach with caching
      *
      * @param string $message The user's message
      * @param string $page_content The content of the current page
@@ -192,6 +210,15 @@ class SA_Helper_Chatbot_AI
     private function get_gemini_response($message, $page_content = '') 
     {
         try {
+            // Check cache first for similar messages
+            $cache_key = $this->generate_response_cache_key($message, $page_content);
+            $cached_response = get_transient($cache_key);
+            
+            if ($cached_response !== false) {
+                error_log('SA Helper Bot: Using cached response for similar message');
+                return $cached_response;
+            }
+            
             // Prepare the enhanced message with context
             $enhanced_message = $this->build_enhanced_message($message, $page_content);
             
@@ -241,8 +268,7 @@ class SA_Helper_Chatbot_AI
             }
             
             $response_data = json_decode($response_body, true);
-            
-            if (empty($response_data) || !isset($response_data['candidates'][0]['content']['parts'][0]['text'])) {
+              if (empty($response_data) || !isset($response_data['candidates'][0]['content']['parts'][0]['text'])) {
                 error_log('SA Helper Bot: Invalid or empty response received from API');
                 return 'GEMINI_FAILURE';
             }
@@ -255,8 +281,13 @@ class SA_Helper_Chatbot_AI
                 return 'GEMINI_FAILURE';
             }
             
-            // Format and return the response
-            return $this->format_response($text);
+            // Format the response
+            $formatted_response = $this->format_response($text);
+            
+            // Cache the response for 1 hour
+            set_transient($cache_key, $formatted_response, 3600);
+            
+            return $formatted_response;
             
         } catch (Exception $e) {
             error_log('SA Helper Bot: Exception in Gemini API call: ' . $e->getMessage());
@@ -285,15 +316,6 @@ class SA_Helper_Chatbot_AI
         }        // Build the complete message
         $enhanced_message = "You are a helpful assistant for this website. ";
         $enhanced_message .= "Please provide accurate, helpful, and concise responses based on the available information.\n\n";
-        $enhanced_message .= "CRITICAL: You MUST format your responses using Markdown syntax. Examples:\n";
-        $enhanced_message .= "- Use **text** for bold/important information\n";
-        $enhanced_message .= "- Use *text* for emphasis/italics\n";
-        $enhanced_message .= "- Use `code` for inline code or technical terms\n";
-        $enhanced_message .= "- Use ## Header for main headings, ### Subheader for subheadings\n";
-        $enhanced_message .= "- Use - item or 1. item for lists\n";
-        $enhanced_message .= "- Use > text for quotes or important notes\n";
-        $enhanced_message .= "- Use [link text](url) for links\n";
-        $enhanced_message .= "Always include some Markdown formatting in your response (at least bold text).\n\n";
         
         if (!empty($context_parts)) {
             $enhanced_message .= "Available Information:\n" . implode("\n\n", $context_parts) . "\n\n";
@@ -493,8 +515,7 @@ class SA_Helper_Chatbot_AI
      * @param string $content Knowledge base content
      * @param string $section Section name
      * @return string Formatted response
-     */
-    private function format_knowledge_response($content, $section)
+     */    private function format_knowledge_response($content, $section)
     {
         // Clean up the content
         $content = wp_strip_all_tags($content);
@@ -512,7 +533,29 @@ class SA_Helper_Chatbot_AI
             }
         }
         
-        return $content;
+        // Add markdown formatting to the response
+        $section_titles = [
+            'company_info' => '**Company Information**',
+            'website_navigation' => '**Website Navigation**',
+            'recent_news' => '**Recent News**',
+            'faq' => '**Frequently Asked Questions**'
+        ];
+        
+        $title = isset($section_titles[$section]) ? $section_titles[$section] : '**Information**';
+        
+        // Format the response with markdown
+        $response = $title . "\n\n" . $content;
+        
+        // Add some helpful formatting if content is plain text
+        if (strpos($content, '.') !== false && strpos($content, '**') === false) {
+            // Add emphasis to the first sentence if it doesn't already have formatting
+            $sentences = explode('.', $content);
+            if (!empty($sentences[0])) {
+                $response = $title . "\n\n**" . trim($sentences[0]) . ".** " . implode('.', array_slice($sentences, 1));
+            }
+        }
+        
+        return $response;
     }
 
     /**
@@ -545,11 +588,59 @@ class SA_Helper_Chatbot_AI
     public function get_session_stats()
     {
         $history = $this->get_conversation_history();
-        return array(
-            'session_id' => isset($this->session_data['session_id']) ? $this->session_data['session_id'] : '',
+        return array(            'session_id' => isset($this->session_data['session_id']) ? $this->session_data['session_id'] : '',
             'started_at' => isset($this->session_data['started_at']) ? $this->session_data['started_at'] : 0,
             'total_messages' => count($history),
             'user_messages' => count(array_filter($history, function($item) { return $item['type'] === 'user'; })),
-            'bot_messages' => count(array_filter($history, function($item) { return $item['type'] === 'bot'; }))        );
+            'bot_messages' => count(array_filter($history, function($item) { return $item['type'] === 'bot'; }))
+        );
+    }
+    
+    /**
+     * Generate cache key for response caching
+     *
+     * @param string $message User message
+     * @param string $page_content Page content
+     * @return string Cache key
+     */
+    private function generate_response_cache_key($message, $page_content = '')
+    {
+        // Normalize message for caching (remove extra spaces, convert to lowercase)
+        $normalized_message = strtolower(trim(preg_replace('/\s+/', ' ', $message)));
+        
+        // Create a hash of the normalized message and relevant settings
+        $data_to_hash = array(
+            'message' => $normalized_message,
+            'temperature' => $this->api_settings['temperature'] ?? 0.7,
+            'model' => $this->api_settings['model'] ?? 'gemini-1.5-pro',
+            'include_page_content' => $this->api_settings['include_page_content'] ?? true,
+            'page_content_hash' => !empty($page_content) ? md5($page_content) : ''
+        );
+        
+        return 'sa_helper_response_' . md5(serialize($data_to_hash));
+    }
+      /**
+     * Clear all cached responses (useful when settings change)
+     */
+    public function clear_response_cache()
+    {
+        global $wpdb;
+        
+        // Use WordPress API to safely clear transients with our prefix
+        $transients = $wpdb->get_col(
+            $wpdb->prepare(
+                "SELECT option_name FROM {$wpdb->options} WHERE option_name LIKE %s",
+                '_transient_sa_helper_response_%'
+            )
+        );
+        
+        foreach ($transients as $transient) {
+            $key = str_replace('_transient_', '', $transient);
+            delete_transient($key);
+        }
+        
+        // Clear other cached data using WordPress APIs
+        delete_transient('sa_helper_api_settings');
+        wp_cache_delete('sa_helper_knowledge_base', 'sa_helper_chatbot');
     }
 }
