@@ -357,7 +357,9 @@ class SA_Helper_Chatbot_AI
         }
         
         return trim($content);
-    }    /**
+    }    
+    
+    /**
      * Store user message in session for conversation history
      *
      * @param string $message The user's message
@@ -451,7 +453,9 @@ class SA_Helper_Chatbot_AI
         }
         
         return $text;
-    }    /**
+    }    
+    
+    /**
      * Get response using keyword matching (fallback method)
      *
      * @param string $message The user's message
@@ -511,7 +515,7 @@ class SA_Helper_Chatbot_AI
                 $keywords = array('news', 'recent', 'update', 'updates', 'announcement', 'new');
                 break;
             case 'faq':
-                $keywords = array('question', 'questions', 'faq', 'help', 'support', 'problem', 'issue');
+                $keywords = array('question', 'questions', 'faq', 'help', 'support', 'problem', 'issue', 'troubleshoot', 'troubleshooting', 'common', 'frequently asked');
                 break;
         }
         
