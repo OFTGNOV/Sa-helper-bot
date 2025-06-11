@@ -571,6 +571,14 @@
         background-color: #1a1a1a;
         border-color: #444;
     }
+
+    .sa-helper-chatbot-typing {
+        background-color: #2d2d2d !important; /* Darker background for typing indicator */
+    }
+
+    .sa-helper-chatbot-typing span {
+        background-color: #777; /* Lighter dots for dark mode */
+    }
 }
 
 /* Mobile responsiveness */

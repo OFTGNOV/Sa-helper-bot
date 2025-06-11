@@ -197,7 +197,9 @@
         addMessage('bot', errorMsg);
         addToConversationHistory('bot', errorMsg);
         scrollToBottom();
-    }    /**
+    }    
+    
+    /**
      * Add message to chat
      */
     function addMessage(sender, message) {
@@ -256,6 +258,7 @@
             return message; // Fallback to plain text
         }
     }
+
     /**
      * Add feedback options
      */
@@ -465,7 +468,9 @@
         setTimeout(() => {
             scrollToBottom();
         }, 100);
-    }/**
+    }
+    
+    /**
      * Theme-specific styling (optimized)
      */
     function applyThemeSpecificStyling() {

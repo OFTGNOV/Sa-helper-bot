@@ -61,10 +61,12 @@ class SA_Helper_Chatbot_AI
             'recent_news' => '',
             'faq' => ''
         ));
-        
-        // Cache for 1 hour
-        wp_cache_set($cache_key, $this->knowledge, 'sa_helper_chatbot', 3600);
-    }    /**
+
+        // Cache for 30 minutes
+        wp_cache_set($cache_key, $this->knowledge, 'sa_helper_chatbot', 1800);
+    }    
+    
+    /**
      * Load API settings from WordPress options (cached for performance)
      */
     private function load_api_settings()
@@ -200,7 +202,9 @@ class SA_Helper_Chatbot_AI
             $this->api_settings['enable'] == '1' &&
             !empty($this->api_settings['api_key'])
         );
-    }    /**
+    }    
+    
+    /**
      * Get response from Gemini API using simplified approach with caching
      *
      * @param string $message The user's message
@@ -293,7 +297,9 @@ class SA_Helper_Chatbot_AI
             error_log('SA Helper Bot: Exception in Gemini API call: ' . $e->getMessage());
             return 'GEMINI_FAILURE';
         }
-    }    /**
+    }    
+    
+    /**
      * Build enhanced message with context for Gemini
      *
      * @param string $message User's message
@@ -303,33 +309,53 @@ class SA_Helper_Chatbot_AI
     private function build_enhanced_message($message, $page_content = '')
     {
         $context_parts = array(); // Initialize the context parts array
-        
-        if (!empty(trim($page_content)) && 
-            isset($this->api_settings['include_page_content']) && 
+
+        // Include page content if available and enabled
+        if (!empty(trim($page_content)) &&
+            isset($this->api_settings['include_page_content']) &&
             $this->api_settings['include_page_content']) {
-            
-            // Clean and limit page content
+
             $cleaned_content = $this->clean_page_content($page_content);
             if (!empty($cleaned_content)) {
-                $context_parts[] = "=== Current Page Content ===\n" . $cleaned_content;
+                $context_parts[] = "=== Current Page Content ===\\n" . $cleaned_content;
             }
-        }        // Build the complete message
-        $enhanced_message = "You are a helpful assistant for this website. ";
-        $enhanced_message .= "Please provide accurate, helpful, and concise responses based on the available information.\n\n";
+        }
+
+        // Include knowledge base content
+        if (!empty($this->knowledge)) {
+            $knowledge_context = "=== Knowledge Base ===\\n";
+            foreach ($this->knowledge as $section => $content) {
+                if (!empty(trim($content))) {
+                    // Sanitize section name for display
+                    $section_title = ucwords(str_replace('_', ' ', $section));
+                    $knowledge_context .= "Section: " . esc_html($section_title) . "\\n";
+                    // Clean and add content, ensuring it's treated as plain text for the prompt
+                    $knowledge_context .= wp_strip_all_tags(trim($content)) . "\\n\\n";
+                }
+            }
+            if (strlen(trim($knowledge_context)) > strlen("=== Knowledge Base ===\\n")) { // Check if any content was added
+                 $context_parts[] = trim($knowledge_context);
+            }
+        }
+
+        // Build the complete message
+        $enhanced_message = "You are a helpful assistant for the company Software Architects Jamaica. You are a bot that works to help on our website.\\n";
+        $enhanced_message .= "Use first-person pronouns.\\n";
+        $enhanced_message .= "Please provide accurate, helpful, and concise responses based on the available information.\\n\\n";
         $enhanced_message .= "IMPORTANT: Format your responses using Markdown when appropriate to improve readability. ";
-        $enhanced_message .= "Use Markdown for:\n";
-        $enhanced_message .= "- **Bold text** for emphasis and important points\n";
-        $enhanced_message .= "- *Italic text* for subtle emphasis\n";
-        $enhanced_message .= "- `inline code` for technical terms, URLs, or code snippets\n";
-        $enhanced_message .= "- Lists (bulleted with - or numbered with 1.) for structured information\n";
-        $enhanced_message .= "- [Links](URL) when referencing external resources\n";
-        $enhanced_message .= "- Simple line breaks for better text organization\n\n";
+        $enhanced_message .= "Use Markdown for:\\n";
+        $enhanced_message .= "- **Bold text** for emphasis and important points\\n";
+        $enhanced_message .= "- *Italic text* for subtle emphasis\\n";
+        $enhanced_message .= "- `inline code` for technical terms, URLs, or code snippets\\n";
+        $enhanced_message .= "- Lists (bulleted with - or numbered with 1.) for structured information\\n";
+        $enhanced_message .= "- [Links](URL) when referencing external resources\\n";
+        $enhanced_message .= "- Simple line breaks for better text organization\\n\\n";
         
         if (!empty($context_parts)) {
-            $enhanced_message .= "Available Information:\n" . implode("\n\n", $context_parts) . "\n\n";
+            $enhanced_message .= "Available Information:\\n" . implode("\\n\\n", $context_parts) . "\\n\\n";
         }
         
-        $enhanced_message .= "User Question: " . $message . "\n\n";
+        $enhanced_message .= "User Question: " . $message . "\\n\\n";
         $enhanced_message .= "Please provide a helpful response based on the available information. ";
         $enhanced_message .= "If the information isn't available, please say so politely and suggest alternatives. ";
         $enhanced_message .= "Remember to use appropriate Markdown formatting to make your response clear and easy to read.";
