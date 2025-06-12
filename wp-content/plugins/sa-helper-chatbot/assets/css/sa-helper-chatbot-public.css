@@ -584,28 +584,35 @@
 /* Mobile responsiveness */
 @media (max-width: 480px) {
     .sa-helper-chatbot-popup {
-        width: calc(100vw - 20px);
-        height: calc(100vh - 120px);
-        right: 10px;
-        bottom: 80px;
-        border-radius: 12px;
+        width: auto; /* Override fixed width from desktop */
+        height: auto; /* Override fixed height from desktop */
+        max-width: min(calc(100vw - 30px), 350px); /* Responsive max-width, capped at 350px */
+        max-height: 65vh; /* Limit overall height to 65% of viewport height */
+        bottom: 75px; /* Position above the new button position (15px button_bottom + 50px button_height + 10px spacing) */
+        right: 15px;
+        left: auto; /* Ensure it aligns to the right and does not stretch full width unless intended */
+        /* transform: none; Remove any transforms if they conflict with positioning */
+        /* position: fixed; is already set */
     }
 
     .sa-helper-chatbot-messages {
-        height: calc(100vh - 260px);
-        max-height: calc(100vh - 260px);
-        padding: 12px;
+        height: auto; /* Allow flexbox to manage height */
+        max-height: none; /* Remove any fixed max-height from desktop styles */
+        min-height: 150px; /* Ensure a minimum usable scrollable area */
+        /* flex-grow: 1; should be inherited or already set */
+        /* overflow-y: auto; should be inherited or already set */
     }
 
     .sa-helper-chatbot-button {
+        width: 50px;
+        height: 50px;
         bottom: 15px;
         right: 15px;
-        width: 56px;
-        height: 56px;
     }
 
     .sa-helper-chatbot-icon {
-        font-size: 11px;
+        font-size: 10px;
+        line-height: 1.1; /* Adjust for better text centering in the smaller button */
     }
 
     .sa-helper-chatbot-message {
