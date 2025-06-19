@@ -305,10 +305,15 @@ class SA_Helper_Chatbot_AI
      * @param string $message User's message
      * @param string $page_content Page content
      * @return string Enhanced message with context
-     */
-    private function build_enhanced_message($message, $page_content = '')
+     */    private function build_enhanced_message($message, $page_content = '')
     {
         $context_parts = array(); // Initialize the context parts array
+
+        // Include conversation history for context and continuity
+        $conversation_context = $this->get_conversation_context();
+        if (!empty($conversation_context)) {
+            $context_parts[] = "=== Recent Conversation History ===\n" . $conversation_context;
+        }
 
         // Include page content if available and enabled
         if (!empty(trim($page_content)) &&
@@ -341,7 +346,9 @@ class SA_Helper_Chatbot_AI
         // Build the complete message
         $enhanced_message = "You are a helpful assistant for the company Software Architects Jamaica. You are a bot that works to help on our website.\\n";
         $enhanced_message .= "Use first-person pronouns.\\n";
-        $enhanced_message .= "Please provide accurate, helpful, short (50 words max) and easily readable based on the available information.\\n\\n";
+        $enhanced_message .= "If the information isn't available, please say so politely and suggest alternatives.\\n";
+        $enhanced_message .= "In case of vague messages or those requiring clarification, ask for more clarification.\\n";
+        $enhanced_message .= "Please provide accurate, helpful, short (60 words max) and easily readable based on the available information.\\n\\n";
         $enhanced_message .= "IMPORTANT: Format your responses using Markdown when appropriate to improve readability. ";
         $enhanced_message .= "Use Markdown for:\\n";
         $enhanced_message .= "- **Bold text** for emphasis and important points\\n";
@@ -675,9 +682,62 @@ class SA_Helper_Chatbot_AI
         }
 
         wp_cache_set('sa_helper_chatbot_transients', []);
-        
-        // Clear other cached data using WordPress APIs
+          // Clear other cached data using WordPress APIs
         delete_transient('sa_helper_api_settings');
         wp_cache_delete('sa_helper_knowledge_base', 'sa_helper_chatbot');
+    }
+
+    /**
+     * Get conversation context from session history for AI context
+     *
+     * @return string Formatted conversation history
+     */
+    private function get_conversation_context()
+    {
+        // Start session if not already started
+        if (session_status() == PHP_SESSION_NONE) {
+            session_start();
+        }
+
+        // Get conversation history from session
+        $conversation_history = isset($_SESSION['sa_helper_chatbot_conversation']) 
+            ? $_SESSION['sa_helper_chatbot_conversation'] 
+            : array();
+
+        if (empty($conversation_history)) {
+            return '';
+        }
+
+        // Get the last 6 exchanges (12 messages total - 6 user + 6 bot) for context
+        // This provides enough context without overwhelming the AI
+        $recent_messages = array_slice($conversation_history, -12);
+        
+        $context_text = '';
+        foreach ($recent_messages as $msg) {
+            $sender = isset($msg['sender']) ? $msg['sender'] : 'unknown';
+            $text = isset($msg['message']) ? $msg['message'] : '';
+            $timestamp = isset($msg['timestamp']) ? $msg['timestamp'] : '';
+            
+            if (!empty($text)) {
+                // Format timestamp for readability
+                $formatted_time = '';
+                if (!empty($timestamp)) {
+                    $formatted_time = ' (' . date('H:i', $timestamp) . ')';
+                }
+                
+                // Clean the message text (remove HTML tags and normalize whitespace)
+                $clean_text = wp_strip_all_tags($text);
+                $clean_text = preg_replace('/\s+/', ' ', trim($clean_text));
+                
+                // Format as conversation
+                if ($sender === 'user') {
+                    $context_text .= "User{$formatted_time}: {$clean_text}\n";
+                } else {
+                    $context_text .= "Bot{$formatted_time}: {$clean_text}\n";
+                }
+            }
+        }
+
+        return trim($context_text);
     }
 }
