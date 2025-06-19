@@ -60,8 +60,7 @@
         // Global escape key handler
         $(document).on('keydown', handleGlobalKeydown);
     }
-    
-    /**
+      /**
      * Unified chat toggle handler
      */
     function handleChatToggle(e) {
@@ -74,7 +73,9 @@
             $chatButton.toggleClass('active');
             $chatPopup.attr('aria-hidden', !isOpening);
             
+            // Handle mobile body scroll prevention
             if (isOpening) {
+                $('body').addClass('sa-helper-chatbot-open');
                 setTimeout(() => {
                     $chatInput.focus();
                     applyThemeSpecificStyling();
@@ -84,11 +85,12 @@
                     loadConversationIntoChat();
                     $chatButton.addClass('history-loaded');
                 }
+            } else {
+                $('body').removeClass('sa-helper-chatbot-open');
             }
         }
     }
-    
-    /**
+      /**
      * Unified chat close handler
      */
     function handleChatClose(e) {
@@ -97,6 +99,9 @@
             $chatPopup.slideUp(ANIMATION_DURATION);
             $chatButton.removeClass('active');
             $chatPopup.attr('aria-hidden', true);
+            
+            // Remove mobile body scroll prevention
+            $('body').removeClass('sa-helper-chatbot-open');
             
             setTimeout(() => {
                 $chatButton.focus();
@@ -476,8 +481,11 @@
     function applyThemeSpecificStyling() {
         const isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         
-        if ($chatInput) { // Add a check for $chatInput
-            $chatInput.css('color', isDarkMode ? '#e0e0e0' : '#333333');
+        if ($chatInput) {
+            $chatInput.css({
+                color: isDarkMode ? '#e0e0e0' : '#333333',
+                backgroundColor: isDarkMode ? '#2d2d2d' : '#f9fafb'
+            });
         }
     }
 

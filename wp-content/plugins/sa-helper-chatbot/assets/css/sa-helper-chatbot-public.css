@@ -65,6 +65,7 @@
 
 /* Header */
 .sa-helper-chatbot-header {
+    flex-shrink: 0;
     padding: 16px 20px;
     background: linear-gradient(135deg, #0073aa 0%, #005177 100%);
     color: white;
@@ -113,9 +114,10 @@
     scroll-behavior: smooth;
     scrollbar-width: thin;
     scrollbar-color: #ccc #f1f1f1;
-    height: 340px;
-    max-height: 340px;
-    min-height: 200px;
+    height: 380px;
+    max-height: 400px;
+    min-height: 300px;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Custom scrollbar styling for webkit browsers */
@@ -318,6 +320,7 @@
 .sa-helper-chatbot-input-container {
     display: flex;
     padding: 12px 16px;
+    gap: 10px;
     border-top: 1px solid #e1e5e9;
     background-color: #ffffff;
     border-radius: 0 0 12px 12px;
@@ -329,6 +332,7 @@
 
 .sa-helper-chatbot-input {
     flex-grow: 1;
+    min-width: 0;
     border: 1px solid #d1d5db;
     border-radius: 20px;
     padding: 10px 14px;
@@ -336,7 +340,7 @@
     font-size: 13px;
     transition: border-color 0.2s ease;
     background-color: #f9fafb;
-    margin-right: 8px;
+    margin-right: 0px;
     color: #333333 !important;
 }
 
@@ -584,23 +588,38 @@
 /* Mobile responsiveness */
 @media (max-width: 480px) {
     .sa-helper-chatbot-popup {
-        width: auto; /* Override fixed width from desktop */
-        height: auto; /* Override fixed height from desktop */
-        max-width: min(calc(100vw - 30px), 350px); /* Responsive max-width, capped at 350px */
-        max-height: 65vh; /* Limit overall height to 65% of viewport height */
-        bottom: 75px; /* Position above the new button position (15px button_bottom + 50px button_height + 10px spacing) */
+        width: calc(100vw - 30px);
+        height: 70vh;
+        max-width: 350px;
+        max-height: 70vh;
+        bottom: 75px;
         right: 15px;
-        left: auto; /* Ensure it aligns to the right and does not stretch full width unless intended */
-        /* transform: none; Remove any transforms if they conflict with positioning */
-        /* position: fixed; is already set */
+        left: auto;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sa-helper-chatbot-header {
+        flex-shrink: 0;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        padding: 12px 16px;
     }
 
     .sa-helper-chatbot-messages {
-        height: auto; /* Allow flexbox to manage height */
-        max-height: none; /* Remove any fixed max-height from desktop styles */
-        min-height: 150px; /* Ensure a minimum usable scrollable area */
-        /* flex-grow: 1; should be inherited or already set */
-        /* overflow-y: auto; should be inherited or already set */
+        flex: 1;
+        overflow-y: auto;
+        overflow-x: hidden;
+        height: auto;
+        max-height: none;
+        min-height: 0;
+        -webkit-overflow-scrolling: touch;
+        padding: 12px;
+    }    .sa-helper-chatbot-input-container {
+        flex-shrink: 0;
+        padding: 10px 12px;
+        border-top: 1px solid #e0e0e0;
     }
 
     .sa-helper-chatbot-button {
@@ -612,28 +631,171 @@
 
     .sa-helper-chatbot-icon {
         font-size: 10px;
-        line-height: 1.1; /* Adjust for better text centering in the smaller button */
+        line-height: 1.1;
     }
 
     .sa-helper-chatbot-message {
         max-width: 90%;
         font-size: 12px;
         padding: 7px 10px;
+        margin-bottom: 8px;
     }
 
-    .sa-helper-chatbot-input-container {
-        padding: 10px 12px;
+    .sa-helper-chatbot-title {
+        font-size: 14px;
+    }
+
+    .sa-helper-chatbot-input {
+        font-size: 14px;
+        padding: 8px 12px;
+    }
+
+    .sa-helper-chatbot-send {
+        padding: 8px 12px;
+        font-size: 12px;
     }
 }
 
 @media (max-width: 320px) {
     .sa-helper-chatbot-popup {
-        width: calc(100vw - 10px);
-        right: 5px;
+        width: calc(100vw - 20px);
+        height: 75vh;
+        max-height: 75vh;
+        right: 10px;
+        bottom: 70px;
     }
 
     .sa-helper-chatbot-button {
         right: 10px;
+        width: 45px;
+        height: 45px;
+    }
+
+    .sa-helper-chatbot-messages {
+        padding: 10px;
+    }
+
+    .sa-helper-chatbot-header {
+        padding: 10px 12px;
+    }
+
+    .sa-helper-chatbot-title {
+        font-size: 13px;
+    }
+
+    .sa-helper-chatbot-message {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+}
+
+/* Additional mobile touch scrolling improvements */
+@media (max-width: 768px) {
+    .sa-helper-chatbot-popup {
+        /* Ensure proper flexbox behavior */
+        display: flex;
+        flex-direction: column;
+        /* Prevent any unwanted transforms or translations */
+        transform: none !important;
+        /* Ensure header stays at top */
+        position: fixed;
+        /* Improve viewport handling */
+        max-height: calc(100vh - 100px);
+        height: 70vh;
+        /* Enhanced mobile positioning */
+        overflow: hidden;
+    }
+
+    .sa-helper-chatbot-header {
+        /* Make sure header is always visible and sticky */
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        flex-shrink: 0;
+        /* Prevent header from moving */
+        transform: none !important;
+        /* Ensure header doesn't disappear */
+        min-height: auto;
+    }
+
+    .sa-helper-chatbot-messages {
+        /* Enhanced touch scrolling for all mobile devices */
+        -webkit-overflow-scrolling: touch;
+        overflow-y: auto;
+        overflow-x: hidden;
+        /* Ensure proper flex behavior */
+        flex: 1 1 auto;
+        min-height: 0;
+        /* Force hardware acceleration for smooth scrolling */
+        will-change: scroll-position;
+        transform: translateZ(0);
+        /* Prevent scroll bouncing issues */
+        overscroll-behavior: contain;
+        /* Add momentum scrolling for iOS Safari */
+        -webkit-overflow-scrolling: touch;
+        /* Improve mobile scrolling behavior */
+        scroll-behavior: smooth;
+        /* Ensure proper touch handling */
+        touch-action: pan-y;
+        /* Fix scroll position retention */
+        position: relative;
+    }
+
+    .sa-helper-chatbot-input-container {
+        /* Ensure input stays at bottom */
+        flex-shrink: 0;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
+        /* Prevent input from moving */
+        transform: none !important;
+        /* Ensure it doesn't get covered */
+        min-height: auto;
+    }
+
+    /* Prevent body scroll when chatbot is open */
+    body.sa-helper-chatbot-open {
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        /* Prevent iOS Safari bounce */
+        overscroll-behavior: none;
+    }
+
+    /* Improve message container behavior on mobile */
+    .sa-helper-chatbot-message {
+        /* Ensure messages don't interfere with scrolling */
+        pointer-events: auto;
+        /* Improve touch target */
+        min-height: 20px;
+    }
+
+    /* Fix potential header positioning issues */
+    .sa-helper-chatbot-title {
+        /* Prevent text overflow issues that might affect header */
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+/* Tablet specific adjustments */
+@media (min-width: 481px) and (max-width: 768px) {
+    .sa-helper-chatbot-popup {
+        width: 400px;
+        max-width: calc(100vw - 40px);
+        height: 60vh;
+        max-height: calc(100vh - 120px);
+    }
+
+    .sa-helper-chatbot-button {
+        width: 55px;
+        height: 55px;
+    }
+
+    .sa-helper-chatbot-icon {
+        font-size: 11px;
     }
 }
 
