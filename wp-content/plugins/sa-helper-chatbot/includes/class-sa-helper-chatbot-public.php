@@ -11,7 +11,9 @@ class SA_Helper_Chatbot_Public {
      *
      * @var SA_Helper_Chatbot_AI
      */
-    private $ai_handler;    /**
+    private $ai_handler;    
+    
+    /**
      * Initialize the class and set its properties.
      */
     public function __construct() {
@@ -31,7 +33,9 @@ class SA_Helper_Chatbot_Public {
             array(),
             SA_HELPER_VERSION
         );
-    }    /**
+    }    
+    
+    /**
      * Register the JavaScript for the public-facing side of the site.
      */    public function enqueue_scripts() {
         // Load DOMPurify for HTML sanitization
@@ -89,7 +93,9 @@ class SA_Helper_Chatbot_Public {
         
         // Include the chatbot template
         include SA_HELPER_PATH . 'templates/chatbot.php';
-    }    /**
+    }   
+    
+    /**
      * Process the chatbot message via AJAX
      */
     public function process_message() {
@@ -130,17 +136,18 @@ class SA_Helper_Chatbot_Public {
         if (defined('WP_DEBUG') && WP_DEBUG) {
             error_log('SA Helper Bot Request - Page: ' . $page_title . ' (' . $page_url . '), Message length: ' . strlen($message));
         }
-        
-        try {
-            // Get response from AI handler, passing page content as context
-            $response = $this->ai_handler->get_response($message, $page_content);
+          try {
+            // Get response with predictive suggestions from AI handler
+            $result = $this->ai_handler->get_response_with_suggestions($message, $page_content);
             
             // Allow filtering of the final response
-            $response = apply_filters('sa_helper_chatbot_final_response', $response, $message, $page_content, $page_url);
+            $response = apply_filters('sa_helper_chatbot_final_response', $result['response'], $message, $page_content, $page_url);
+            $suggestions = apply_filters('sa_helper_chatbot_filter_suggestions', $result['suggestions'], $message, $response);
             
-            // Send the response with additional metadata
+            // Send the response with additional metadata and suggestions
             wp_send_json_success(array(
                 'response' => $response,
+                'suggestions' => $suggestions,
                 'session_stats' => $this->ai_handler->get_session_stats(),
                 'timestamp' => current_time('timestamp')
             ));
@@ -190,5 +197,53 @@ class SA_Helper_Chatbot_Public {
           update_option('sa_helper_chatbot_feedback', $feedbacks);
         
         wp_send_json_success('Feedback recorded');
+    }
+
+    /**
+     * Get initial suggestions for when chat first loads
+     */
+    public function get_initial_suggestions() {
+        // Security check
+        check_ajax_referer('sa-helper-chatbot-nonce', 'nonce');
+        
+        // Check if AI handler is available
+        if (!isset($this->ai_handler)) {
+            wp_send_json_error('AI service not available');
+            return;
+        }
+        
+        // Get initial suggestions
+        $suggestions = $this->ai_handler->get_predictive_suggestions();
+        
+        wp_send_json_success(array(
+            'suggestions' => $suggestions
+        ));
+    }
+
+    /**
+     * Get contextual suggestions based on conversation state
+     */
+    public function get_contextual_suggestions() {
+        // Security check
+        check_ajax_referer('sa-helper-chatbot-nonce', 'nonce');
+        
+        if (!$this->ai_handler) {
+            wp_send_json_error('AI handler not available');
+            return;
+        }
+        
+        $conversation_length = isset($_POST['conversation_length']) ? intval($_POST['conversation_length']) : 0;
+        
+        // Get contextual suggestions based on conversation state
+        if ($conversation_length === 0) {
+            $suggestions = $this->ai_handler->get_initial_suggestions();
+        } else {
+            // Get suggestions based on conversation context
+            $suggestions = $this->ai_handler->get_predictive_suggestions();
+        }
+        
+        wp_send_json_success(array(
+            'suggestions' => $suggestions
+        ));
     }
 }

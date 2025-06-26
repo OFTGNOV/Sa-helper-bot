@@ -426,6 +426,349 @@
     background-color: rgba(0,115,170,0.1);
 }
 
+/* Predictive Suggestions Styling - Compact Bubble Design Above Input */
+.sa-helper-chatbot-suggestions {
+    position: absolute;
+    bottom: 100%;
+    left: 10px;
+    right: 10px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(12px);
+    border-radius: 12px 12px 3px 3px;
+    padding: 8px;
+    margin-bottom: 6px;
+    box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(0, 115, 170, 0.15);
+    display: none;
+    z-index: 1000;
+    max-height: 140px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 115, 170, 0.3) transparent;
+}
+
+.sa-helper-chatbot-suggestions::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sa-helper-chatbot-suggestions::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sa-helper-chatbot-suggestions::-webkit-scrollbar-thumb {
+    background-color: rgba(0, 115, 170, 0.3);
+    border-radius: 2px;
+}
+
+.suggestions-title {
+    font-size: 9px;
+    color: #8a8a8a;
+    margin-bottom: 6px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    opacity: 0.8;
+}
+
+.suggestions-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.suggestion-button {
+    background: linear-gradient(135deg, #f9f9f9 0%, #ffffff 100%);
+    border: 1px solid #e1e5e9;
+    border-radius: 14px;
+    padding: 6px 12px;
+    font-size: 11px;
+    color: #555555;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    word-wrap: break-word;
+    line-height: 1.3;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+    min-height: 24px;
+    display: flex;
+    align-items: center;
+}
+
+.suggestion-button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 115, 170, 0.1), transparent);
+    transition: left 0.5s;
+}
+
+.suggestion-button:hover::before {
+    left: 100%;
+}
+
+.suggestion-button:hover {
+    background: linear-gradient(135deg, #e8f4ff 0%, #f0f8ff 100%);
+    border-color: #0073aa;
+    color: #0073aa;
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 3px 8px rgba(0, 115, 170, 0.25);
+}
+
+.suggestion-button:focus {
+    outline: none;
+    background: linear-gradient(135deg, #e8f4ff 0%, #f0f8ff 100%);
+    border-color: #0073aa;
+    box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.3);
+}
+
+.suggestion-button:active {
+    transform: translateY(0) scale(0.99);
+    background: linear-gradient(135deg, #d0e7ff 0%, #e0f0ff 100%);
+}
+
+/* Enhanced suggestion styles */
+.suggestion-button.selected {
+    background: linear-gradient(135deg, #0073aa 0%, #005177 100%);
+    border-color: #0073aa;
+    color: white;
+    transform: scale(0.99);
+    box-shadow: 0 2px 6px rgba(0, 115, 170, 0.4);
+}
+
+.suggestion-feedback {
+    font-size: 9px;
+    color: #999;
+    text-align: center;
+    padding: 2px 6px;
+    background: rgba(0,115,170,0.08);
+    border-radius: 8px;
+    margin: 2px 0;
+    font-style: italic;
+}
+
+/* Suggestions Toggle Button */
+.suggestions-toggle {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 115, 170, 0.2);
+    border-radius: 12px;
+    padding: 4px 8px;
+    font-size: 9px;
+    color: #0073aa;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    z-index: 1001;
+    font-weight: 500;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.suggestions-toggle:hover {
+    background: rgba(0, 115, 170, 0.1);
+    border-color: #0073aa;
+    transform: scale(1.05);
+}
+
+.suggestions-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.3);
+}
+
+/* Enhanced toggle button styles */
+.suggestions-toggle {
+    font-family: inherit;
+    user-select: none;
+    white-space: nowrap;
+    min-width: 32px;
+    text-align: center;
+}
+
+.show-suggestions-btn {
+    animation: fadeInToggle 0.3s ease-out;
+}
+
+@keyframes fadeInToggle {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Additional mobile optimizations for toggle */
+@media (max-width: 320px) {
+    .suggestions-toggle {
+        top: -24px;
+        right: 6px;
+        padding: 2px 5px;
+        font-size: 7px;
+        border-radius: 8px;
+        min-width: 28px;
+    }
+}
+
+/* Ensure toggle button doesn't interfere with scrolling */
+.sa-helper-chatbot-input-container {
+    position: relative;
+}
+
+/* Better focus states for toggle button */
+.suggestions-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(0, 115, 170, 0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+    .suggestions-toggle:focus-visible {
+        box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.4);
+    }
+}
+
+/* Bubble animation and positioning improvements */
+.sa-helper-chatbot-suggestions.show {
+    animation: bubbleUp 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.sa-helper-chatbot-suggestions.hide {
+    animation: bubbleDown 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes bubbleUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes bubbleDown {
+    from {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(20px) scale(0.9);
+    }
+}
+
+/* Dark mode support for suggestions */
+@media (prefers-color-scheme: dark) {
+    .sa-helper-chatbot-suggestions {
+        background: rgba(42, 42, 42, 0.96);
+        border-color: rgba(255, 255, 255, 0.12);
+        box-shadow: 0 -3px 15px rgba(0, 0, 0, 0.4);
+    }
+    
+    .suggestion-button {
+        background: linear-gradient(135deg, #2a2a2a 0%, #353535 100%);
+        border-color: #404040;
+        color: #e0e0e0;
+    }
+    
+    .suggestion-button:hover {
+        background: linear-gradient(135deg, #1a4f6b 0%, #2a5f7b 100%);
+        border-color: #4fc3f7;
+        color: #87ceeb;
+    }
+    
+    .suggestion-button:focus {
+        background: linear-gradient(135deg, #1a4f6b 0%, #2a5f7b 100%);
+        border-color: #4fc3f7;
+        box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.3);
+    }
+    
+    .suggestion-button:active {
+        background: linear-gradient(135deg, #144a63 0%, #1f4c63 100%);
+    }
+    
+    .suggestion-button.selected {
+        background: linear-gradient(135deg, #4fc3f7 0%, #0073aa 100%);
+        border-color: #4fc3f7;
+        color: #1a1a1a;
+    }
+    
+    .suggestions-title {
+        color: #a0a0a0;
+    }
+    
+    .suggestion-feedback {
+        color: #999;
+        background: rgba(79, 195, 247, 0.12);
+    }
+    
+    .suggestions-toggle {
+        background: rgba(42, 42, 42, 0.95);
+        border-color: rgba(79, 195, 247, 0.3);
+        color: #4fc3f7;
+    }
+    
+    .suggestions-toggle:hover {
+        background: rgba(79, 195, 247, 0.15);
+        border-color: #4fc3f7;
+    }
+    
+    .suggestions-toggle:focus {
+        box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.3);
+    }
+}
+
+/* Improved responsive design for suggestions */
+@media (max-width: 480px) {
+    .sa-helper-chatbot-suggestions {
+        left: 6px;
+        right: 6px;
+        margin-bottom: 4px;
+        max-height: 120px;
+        border-radius: 10px 10px 3px 3px;
+        padding: 6px;
+    }
+    
+    .suggestions-buttons {
+        gap: 3px;
+    }
+    
+    .suggestion-button {
+        padding: 6px 10px;
+        font-size: 10px;
+        border-radius: 12px;
+        min-height: 22px;
+    }
+    
+    .suggestions-title {
+        font-size: 8px;
+        margin-bottom: 4px;
+    }
+    
+    .suggestions-toggle {
+        top: -26px;
+        right: 8px;
+        padding: 3px 6px;
+        font-size: 8px;
+        border-radius: 10px;
+    }
+}
+
+/* Focus ring improvements for accessibility */
+.suggestion-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(0, 115, 170, 0.3);
+}
+
 /* Animations */
 @keyframes fadeIn {
     from {
@@ -473,6 +816,22 @@
         opacity: 0.4;
         transform: scale(1);
     }
+}
+
+/* Animation for suggestions appearing */
+@keyframes slideInFromBottom {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.sa-helper-chatbot-suggestions {
+    animation: slideInFromBottom 0.3s ease-out;
 }
 
 /* Dark mode styles */
@@ -802,7 +1161,8 @@
 /* Accessibility improvements */
 .sa-helper-chatbot-button:focus,
 .sa-helper-chatbot-input:focus,
-.sa-helper-chatbot-send:focus {
+.sa-helper-chatbot-send:focus,
+.suggestion-button:focus {
     outline: 2px solid #0073aa;
     outline-offset: 2px;
 }

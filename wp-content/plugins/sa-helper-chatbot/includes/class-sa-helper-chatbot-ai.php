@@ -34,6 +34,13 @@ class SA_Helper_Chatbot_AI
     private $session_data;
 
     /**
+     * Predictive response suggestions based on conversation context
+     *
+     * @var array
+     */
+    private $predictive_suggestions;
+
+    /**
      * Initialize the class
      */
     public function __construct()
@@ -41,6 +48,7 @@ class SA_Helper_Chatbot_AI
         $this->load_knowledge_base();
         $this->load_api_settings();
         $this->init_session();
+        $this->init_predictive_suggestions();
     }    /**
      * Load knowledge base from WordPress options (cached for performance)
      */
@@ -118,6 +126,92 @@ class SA_Helper_Chatbot_AI
         
         $this->session_data = &$_SESSION['sa_helper_chatbot'];
     }    
+    
+    /**
+     * Initialize predictive suggestions data
+     */
+    private function init_predictive_suggestions()
+    {
+        $this->predictive_suggestions = array(
+            'initial' => array(
+                "Tell me about Software Architects Jamaica",
+                "What services do you offer?",
+                "How can I contact you?",
+                "What's your company's experience?",
+                "Do you have recent projects or news?",
+                "What makes you different from other companies?",
+                "Can you help with my project?"
+            ),
+            'company_info' => array(
+                "What is your company's mission?",
+                "How long have you been in business?",
+                "What makes you different from competitors?",
+                "What industries do you work with?",
+                "Can you tell me about your team?",
+                "What's your company culture like?",
+                "Where are you located?"
+            ),
+            'services' => array(
+                "What web development services do you provide?",
+                "Do you offer mobile app development?",
+                "What about software consulting?",
+                "Do you provide ongoing support?",
+                "What technologies do you work with?",
+                "Can you help with e-commerce solutions?",
+                "Do you offer maintenance services?"
+            ),
+            'projects' => array(
+                "Can you show me examples of your work?",
+                "What types of projects have you completed?",
+                "Do you have client testimonials?",
+                "What was your most challenging project?",
+                "How do you ensure project quality?",
+                "Can I see your portfolio?",
+                "What industries have you worked with?"
+            ),
+            'contact' => array(
+                "How can I get a quote?",
+                "What's the best way to reach you?",
+                "What are your business hours?",
+                "How quickly can you respond to inquiries?",
+                "Can we schedule a meeting?"
+            ),
+            'technical' => array(
+                "Do you work with cloud platforms?",
+                "What about database technologies?",
+                "Do you follow security best practices?",
+                "How do you handle data privacy?",
+                "Do you use modern development practices?"
+            ),
+            'process' => array(
+                "What's your development process?",
+                "How do you manage projects?",
+                "What's your typical timeline?",
+                "How do you handle revisions?",
+                "Do you provide project updates?",
+                "What's your testing process?",
+                "How do you handle project requirements?"
+            ),
+            'pricing' => array(
+                "What are your typical rates?",
+                "How do you price projects?",
+                "Do you offer fixed-price contracts?",
+                "What payment methods do you accept?",
+                "Can you work within my budget?",
+                "Do you offer payment plans?",
+                "What factors affect project cost?"
+            ),
+            'timeline' => array(
+                "How long do projects typically take?",
+                "Can you meet tight deadlines?",
+                "What affects project timeline?",
+                "Do you provide milestone updates?",
+                "How do you handle delays?",
+                "Can you expedite my project?",
+                "What's your current availability?"
+            )
+        );
+    }
     
     /**
      * Get a response based on the user's message
@@ -561,7 +655,8 @@ class SA_Helper_Chatbot_AI
      * @param string $content Knowledge base content
      * @param string $section Section name
      * @return string Formatted response
-     */    private function format_knowledge_response($content, $section)
+     */    
+    private function format_knowledge_response($content, $section)
     {
         // Clean up the content
         $content = wp_strip_all_tags($content);
@@ -665,7 +760,8 @@ class SA_Helper_Chatbot_AI
         
         return 'sa_helper_response_' . md5(serialize($data_to_hash));
     }
-      /**
+     
+    /**
      * Clear all cached responses (useful when settings change)
      */
     public function clear_response_cache()
@@ -682,11 +778,12 @@ class SA_Helper_Chatbot_AI
         }
 
         wp_cache_set('sa_helper_chatbot_transients', []);
-          // Clear other cached data using WordPress APIs
+          
+        // Clear other cached data using WordPress APIs
         delete_transient('sa_helper_api_settings');
         wp_cache_delete('sa_helper_knowledge_base', 'sa_helper_chatbot');
-    }
-
+    }    
+    
     /**
      * Get conversation context from session history for AI context
      *
@@ -694,15 +791,8 @@ class SA_Helper_Chatbot_AI
      */
     private function get_conversation_context()
     {
-        // Start session if not already started
-        if (session_status() == PHP_SESSION_NONE) {
-            session_start();
-        }
-
         // Get conversation history from session
-        $conversation_history = isset($_SESSION['sa_helper_chatbot_conversation']) 
-            ? $_SESSION['sa_helper_chatbot_conversation'] 
-            : array();
+        $conversation_history = $this->get_conversation_history();
 
         if (empty($conversation_history)) {
             return '';
@@ -714,7 +804,7 @@ class SA_Helper_Chatbot_AI
         
         $context_text = '';
         foreach ($recent_messages as $msg) {
-            $sender = isset($msg['sender']) ? $msg['sender'] : 'unknown';
+            $sender = isset($msg['type']) ? $msg['type'] : 'unknown';
             $text = isset($msg['message']) ? $msg['message'] : '';
             $timestamp = isset($msg['timestamp']) ? $msg['timestamp'] : '';
             
@@ -739,5 +829,277 @@ class SA_Helper_Chatbot_AI
         }
 
         return trim($context_text);
+    }
+    
+    /**
+     * Get a response based on the user's message with predictive suggestions
+     *
+     * @param string $message The user's message
+     * @param string $page_content Optional. The content of the current page.
+     * @return array The chatbot's response with suggestions
+     */
+    public function get_response_with_suggestions($message, $page_content = '') 
+    {
+        $response = $this->get_response($message, $page_content);
+        $suggestions = $this->get_predictive_suggestions($message, $response);
+        
+        return array(
+            'response' => $response,
+            'suggestions' => $suggestions
+        );
+    }    
+    
+    /**
+     * Get predictive user message suggestions based on conversation context
+     *
+     * @param string $user_message The user's last message
+     * @param string $bot_response The bot's response
+     * @return array Array of suggested follow-up questions
+     */
+    public function get_predictive_suggestions($user_message = '', $bot_response = '')
+    {
+        // If this is the start of conversation, return initial suggestions
+        $conversation_history = $this->get_conversation_history();
+        if (empty($conversation_history) || count($conversation_history) <= 2) {
+            return $this->get_random_suggestions('initial', 3);
+        }
+        
+        // Analyze conversation context
+        $context = $this->analyze_conversation_context($user_message, $bot_response);
+        
+        // Get suggestions based on context
+        $suggestions = $this->get_contextual_suggestions($context);
+        
+        // Use Gemini to generate smart suggestions if API is available
+        if ($this->is_gemini_api_configured()) {
+            $ai_suggestions = $this->get_ai_generated_suggestions($user_message, $bot_response, $context);
+            if (!empty($ai_suggestions)) {
+                // Merge AI suggestions with predefined ones, prioritizing AI
+                $suggestions = array_merge($ai_suggestions, array_slice($suggestions, 0, 2));
+            }
+        }
+        
+        // Ensure we always have at least 2 suggestions
+        if (count($suggestions) < 2) {
+            $fallback_suggestions = $this->get_random_suggestions('services', 3);
+            $suggestions = array_merge($suggestions, $fallback_suggestions);
+        }
+        
+        // Return max 3 unique suggestions
+        $unique_suggestions = array_unique($suggestions);
+        return array_slice($unique_suggestions, 0, 3);
+    }
+    
+    /**
+     * Analyze conversation context to determine topic focus
+     *
+     * @param string $user_message Latest user message
+     * @param string $bot_response Latest bot response
+     * @return string Context category
+     */
+    private function analyze_conversation_context($user_message, $bot_response)
+    {
+        $message_lower = strtolower($user_message . ' ' . $bot_response);
+        
+        // Check for specific topics in order of priority
+        $context_patterns = array(
+            'contact' => array('contact', 'reach', 'phone', 'email', 'quote', 'consultation', 'hire', 'work with', 'get in touch', 'speak to', 'talk to', 'meeting', 'discuss'),
+            'pricing' => array('price', 'cost', 'budget', 'rate', 'expensive', 'cheap', 'affordable', 'payment', 'money', 'fee', 'charge', 'estimate'),
+            'timeline' => array('time', 'deadline', 'schedule', 'when', 'how long', 'duration', 'quick', 'fast', 'urgent', 'timeline', 'delivery'),
+            'services' => array('service', 'develop', 'build', 'create', 'design', 'software', 'web', 'app', 'mobile', 'website', 'application', 'system'),
+            'projects' => array('project', 'portfolio', 'example', 'work', 'case study', 'client', 'testimonial', 'experience', 'sample'),
+            'technical' => array('technology', 'programming', 'language', 'database', 'cloud', 'security', 'framework', 'platform', 'tool', 'infrastructure'),
+            'process' => array('process', 'methodology', 'timeline', 'manage', 'agile', 'workflow', 'how do you', 'approach', 'method', 'step'),
+            'company_info' => array('about', 'company', 'team', 'mission', 'history', 'experience', 'who are', 'founded', 'background', 'story')
+        );
+        
+        // Score each context based on keyword matches
+        $context_scores = array();
+        foreach ($context_patterns as $context => $patterns) {
+            $score = 0;
+            foreach ($patterns as $pattern) {
+                if (strpos($message_lower, $pattern) !== false) {
+                    $score += 1;
+                    // Give more weight to exact matches
+                    if (strpos($message_lower, ' ' . $pattern . ' ') !== false || 
+                        strpos($message_lower, $pattern . ' ') === 0 || 
+                        strpos($message_lower, ' ' . $pattern) === strlen($message_lower) - strlen($pattern) - 1) {
+                        $score += 0.5;
+                    }
+                }
+            }
+            if ($score > 0) {
+                $context_scores[$context] = $score;
+            }
+        }
+        
+        // Return the context with the highest score
+        if (!empty($context_scores)) {
+            arsort($context_scores);
+            return array_keys($context_scores)[0];
+        }
+        
+        // Default context based on conversation length
+        $history = $this->get_conversation_history();
+        if (count($history) < 6) {
+            return 'company_info';
+        }
+        
+        return 'services'; // Default fallback
+    }
+    
+    /**
+     * Get contextual suggestions based on detected context
+     *
+     * @param string $context The detected conversation context
+     * @return array Array of suggestions
+     */
+    private function get_contextual_suggestions($context)
+    {
+        if (isset($this->predictive_suggestions[$context])) {
+            return $this->get_random_suggestions($context, 3);
+        }
+        
+        // Fallback to services suggestions
+        return $this->get_random_suggestions('services', 3);
+    }
+    
+    /**
+     * Get random suggestions from a specific category
+     *
+     * @param string $category Suggestion category
+     * @param int $count Number of suggestions to return
+     * @return array Array of suggestions
+     */
+    private function get_random_suggestions($category, $count = 3)
+    {
+        if (!isset($this->predictive_suggestions[$category])) {
+            return array();
+        }
+        
+        $suggestions = $this->predictive_suggestions[$category];
+        shuffle($suggestions);
+        return array_slice($suggestions, 0, $count);
+    }
+      
+    /**
+     * Generate AI-powered suggestions using Gemini
+     *
+     * @param string $user_message Latest user message
+     * @param string $bot_response Latest bot response
+     * @param string $context Detected context
+     * @return array Array of AI-generated suggestions
+     */
+    private function get_ai_generated_suggestions($user_message, $bot_response, $context)
+    {
+        try {
+            $conversation_history = $this->get_conversation_history();
+            $recent_messages = array_slice($conversation_history, -4); // Last 4 messages for context
+            
+            $context_text = '';
+            foreach ($recent_messages as $msg) {
+                $sender = isset($msg['type']) ? $msg['type'] : 'unknown';
+                $message = isset($msg['message']) ? $msg['message'] : '';
+                
+                if (!empty($message)) {
+                    $clean_message = wp_strip_all_tags($message);
+                    $clean_message = preg_replace('/\s+/', ' ', trim($clean_message));
+                    $context_text .= ucfirst($sender) . ": " . $clean_message . "\n";
+                }
+            }
+            
+            $prompt = "Based on this conversation about Software Architects Jamaica (a software development company), suggest 2-3 natural follow-up questions a user might want to ask. Make them specific and relevant to the conversation flow.\n\n";
+            $prompt .= "Recent conversation:\n" . $context_text . "\n";
+            $prompt .= "Context category: " . $context . "\n\n";
+            $prompt .= "Return only the suggested questions, one per line, without numbering or bullets. Make them conversational and specific to what a potential client might ask.";
+            
+            $api_key = $this->api_settings['api_key'];
+            $model = $this->get_compatible_model_name($this->api_settings['model'] ?: 'gemini-1.5-pro');
+            
+            $endpoint = "https://generativelanguage.googleapis.com/v1/models/$model:generateContent?key=$api_key";
+            
+            $request_data = [
+                'contents' => [
+                    [
+                        'role' => 'user',
+                        'parts' => [
+                            ['text' => $prompt]
+                        ]
+                    ]
+                ],
+                'generationConfig' => [
+                    'temperature' => 0.8, // Higher creativity for suggestions
+                    'maxOutputTokens' => 200,
+                ],
+            ];
+            
+            $args = array(
+                'headers' => array(
+                    'Content-Type' => 'application/json',
+                ),
+                'timeout' => 10, // Shorter timeout for suggestions
+                'body' => json_encode($request_data),
+                'method' => 'POST',
+            );
+            
+            $response = wp_remote_post($endpoint, $args);
+            
+            if (is_wp_error($response)) {
+                return array();
+            }
+            
+            $response_code = wp_remote_retrieve_response_code($response);
+            $response_body = wp_remote_retrieve_body($response);
+            
+            if ($response_code !== 200) {
+                return array();
+            }
+            
+            $response_data = json_decode($response_body, true);
+            
+            if (empty($response_data) || !isset($response_data['candidates'][0]['content']['parts'][0]['text'])) {
+                return array();
+            }
+            
+            $suggestions_text = $response_data['candidates'][0]['content']['parts'][0]['text'];
+            $suggestions = array_filter(array_map('trim', explode("\n", $suggestions_text)));
+            
+            // Clean up suggestions (remove numbering, bullets, etc.)
+            $cleaned_suggestions = array();
+            foreach ($suggestions as $suggestion) {
+                $suggestion = preg_replace('/^[\d\.\)\-\*\s]+/', '', $suggestion);
+                $suggestion = trim($suggestion, '"\'');
+                if (strlen($suggestion) > 10 && strlen($suggestion) < 100) {
+                    $cleaned_suggestions[] = $suggestion;
+                }
+            }
+            
+            return array_slice($cleaned_suggestions, 0, 2); // Return max 2 AI suggestions
+            
+        } catch (Exception $e) {
+            error_log('SA Helper Bot: Error generating AI suggestions: ' . $e->getMessage());
+            return array();
+        }
+    }
+
+    /**
+     * Get initial suggestions for when the chat starts
+     *
+     * @return array Array of initial suggestions
+     */
+    public function get_initial_suggestions()
+    {
+        return $this->get_random_suggestions('initial', 3);
+    }
+
+    /**
+     * Check if this is a new conversation
+     *
+     * @return bool True if this is a new conversation
+     */
+    public function is_new_conversation()
+    {
+        $history = $this->get_conversation_history();
+        return empty($history) || count($history) <= 2;
     }
 }

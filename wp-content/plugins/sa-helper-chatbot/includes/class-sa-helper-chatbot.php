@@ -82,16 +82,22 @@ class SA_Helper_Chatbot {
         $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_styles');
         $this->loader->add_action('wp_enqueue_scripts', $plugin_public, 'enqueue_scripts');
         $this->loader->add_action('wp_footer', $plugin_public, 'display_chatbot');
-        
-        // AJAX hooks for the chatbot
+          // AJAX hooks for the chatbot
         // IMPORTANT: Ensure 'process_message' method in SA_Helper_Chatbot_Public includes nonce verification for security.
         $this->loader->add_action('wp_ajax_sa_helper_chatbot_message', $plugin_public, 'process_message');
         $this->loader->add_action('wp_ajax_nopriv_sa_helper_chatbot_message', $plugin_public, 'process_message');
-        
-        // AJAX hooks for feedback
+          // AJAX hooks for feedback
         // IMPORTANT: Ensure 'process_feedback' method in SA_Helper_Chatbot_Public includes nonce verification for security.
         $this->loader->add_action('wp_ajax_sa_helper_chatbot_feedback', $plugin_public, 'process_feedback');
         $this->loader->add_action('wp_ajax_nopriv_sa_helper_chatbot_feedback', $plugin_public, 'process_feedback');
+        
+        // AJAX hooks for getting initial suggestions
+        $this->loader->add_action('wp_ajax_sa_helper_chatbot_initial_suggestions', $plugin_public, 'get_initial_suggestions');
+        $this->loader->add_action('wp_ajax_nopriv_sa_helper_chatbot_initial_suggestions', $plugin_public, 'get_initial_suggestions');
+        
+        // AJAX hooks for getting contextual suggestions
+        $this->loader->add_action('wp_ajax_sa_helper_chatbot_contextual_suggestions', $plugin_public, 'get_contextual_suggestions');
+        $this->loader->add_action('wp_ajax_nopriv_sa_helper_chatbot_contextual_suggestions', $plugin_public, 'get_contextual_suggestions');
     }
 
     /**
